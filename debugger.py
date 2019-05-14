@@ -17,7 +17,8 @@ def main():
     args = parser.parse_args()
 
     model = TestModel()
-    vcd = VCDData(args.INPUT, siglist=model.get_traced_signals())
+
+    vcd = VCDData(args.INPUT, siglist=model.get_signal_names())
     model.set_data(vcd)
 
     runtime = Runtime(None, model)

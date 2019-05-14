@@ -40,7 +40,7 @@ class Runtime():
             'arrow': '#00aa00'
         })
         prompt_message = [
-            ('class:arrow', '>'),
+            ('class:arrow', '> '),
         ]
         completer = WordCompleter(['step', 'info', 'list'])
         self.prompt = (prompt_message, prompt_style, completer)

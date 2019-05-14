@@ -33,6 +33,9 @@ class HWModule(metaclass=abc.ABCMeta):
             value = self.data.get_value(symbol, 0)
             self.signals.append(Signal(symbol, signal, value))
 
+    def get_signal_names(self):
+        return self.signal_names
+
     def get_signals(self):
         return self.signals
 
@@ -56,6 +59,12 @@ class HWModel(metaclass=abc.ABCMeta):
         for module in self.get_traced_modules():
             signals.extend(module.get_signals())
         return signals
+
+    def get_signal_names(self):
+        names = []
+        for module in self.get_traced_modules():
+            names.extend(module.get_signal_names())
+        return names
 
     @abc.abstractmethod
     def get_traced_modules(self):

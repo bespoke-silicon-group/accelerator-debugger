@@ -12,6 +12,9 @@ class VCDParseError(Exception):
 class VCDData():
     def __init__(self, filename, siglist=None):
         self.timescale = None
+        if not self.check_signals(filename, siglist):
+            raise ValueError("Not all signals found")
+
         self.vcd = self._parse_vcd(filename, only_sigs=False,
                                    siglist=siglist, opt_timescale='')
         self.mapping = {}
@@ -37,22 +40,12 @@ class VCDData():
         return self.mapping[name]
 
     def check_signals(self, file, signals):
-        # TODO unfinished
-        raise NotImplementedError
         """Parse VCD input file and make sure that all signals exist"""
+        vcd = self._parse_vcd(file, siglist=signals, only_sigs=1)
+        return len(vcd.keys()) == len(signals)
 
-        vcd = self._parse_vcd(file, only_sigs=1)
 
-        sigs = []
-        for k in vcd:
-            signal = vcd[k]
-            nets = signal['nets']
-            sigs.extend(n['hier']+'.'+n['name'] for n in nets)
-
-        return sigs
-
-    def _parse_vcd(self, file, only_sigs=0, siglist=None, opt_timescale='',
-                   check_list=None):
+    def _parse_vcd(self, file, only_sigs=0, siglist=None, opt_timescale=''):
         """Parse input VCD file into data structure.
         Also, print t-v pairs to STDOUT, if requested."""
 
@@ -75,8 +68,6 @@ class VCDData():
                 if line == '':  # EOF
                     break
 
-                # chomp
-                # s/ ^ \s+ //x
                 line = line.strip()
 
                 # if nothing left after we strip whitespace, go to next line
@@ -107,13 +98,12 @@ class VCDData():
                 elif "$enddefinitions" in line:
                     num_sigs = len(data)
                     if not num_sigs and all_sigs:
-                        VCDParseError("Error: No signals were found in the "
-                                      "VCD file "+file+". Check the VCD file "
+                        VCDParseError("Error: No signals found. Check the file"
                                       "for proper var syntax.")
 
                     elif not num_sigs:
-                        VCDParseError("Error: No matching signals were found "
-                                      "in the VCD file "+file+". Use list_sigs"
+                        VCDParseError("Error: No matching signals found."
+                                      " Use list_sigs"
                                       " to view all signals in the VCD file.")
 
                     if only_sigs:
@@ -160,6 +150,7 @@ class VCDData():
                         }
                         if var_struct not in data[code]['nets']:
                             data[code]['nets'].append(var_struct)
+
 
         file_handle.close()
 
