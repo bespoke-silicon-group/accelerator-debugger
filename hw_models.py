@@ -45,10 +45,6 @@ class HWModule(metaclass=abc.ABCMeta):
 
 
 class HWModel(metaclass=abc.ABCMeta):
-    def __init__(self, vcd_data):
-        self.data = vcd_data
-        self.time = 0
-
     def get_traced_signals(self):
         signals = []
         for module in self.get_traced_modules():

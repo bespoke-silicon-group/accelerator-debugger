@@ -7,15 +7,20 @@ from vcd_parser import VCDData
 from runtime import Runtime
 from manycore_model import ManycoreModel
 
-parser = argparse.ArgumentParser(description='VCD Trace Debugger')
-parser.add_argument("INPUT", type=str,
-                    help="Input VCD file")
+def main():
+    """Run the debugger"""
+    parser = argparse.ArgumentParser(description='VCD Trace Debugger')
+    parser.add_argument("INPUT", type=str,
+                        help="Input VCD file")
 
-args = parser.parse_args()
+    args = parser.parse_args()
 
-vcd = VCDData(args.INPUT)
-model = ManycoreModel(vcd)
-print(vcd)
+    vcd = VCDData(args.INPUT)
+    model = ManycoreModel(vcd)
+    print(vcd)
 
-runtime = Runtime(None, model)
-runtime.start()
+    runtime = Runtime(None, model)
+    runtime.start()
+
+if __name__ == "__main__":
+    main()

@@ -8,15 +8,16 @@ class VCDParseError(Exception):
     pass
 
 class VCDData():
-    def __init__(self, filename, siglist=[]):
-        self.vcd = self.parse_vcd(filename, only_sigs=False, use_stdout=False,
-                                  siglist=siglist, opt_timescale='')
+    def __init__(self, filename, siglist=None):
+        self.timescale = None
+        self.vcd = self._parse_vcd(filename, only_sigs=False, use_stdout=False,
+                                   siglist=siglist, opt_timescale='')
         self.mapping = {}
         for k in self.vcd.keys():
-            v = self.vcd[k]
-            nets = v['nets']
-            for n in nets:
-                self.mapping[n['hier']+'.'+n['name']] = k
+            signal = self.vcd[k]
+            nets = signal['nets']
+            for net in nets:
+                self.mapping[net['hier']+'.'+net['name']] = k
 
     def get_value(self, symbol, time):
         # TODO This could be sped up by saving a pointer to the last time
@@ -33,30 +34,31 @@ class VCDData():
     def get_symbol(self, name):
         return self.mapping[name]
 
-    def list_sigs(file):
+    def list_sigs(self, file):
         """Parse input VCD file into data structure,
         then return just a list of the signal names."""
 
-        vcd = self.parse_vcd(file, only_sigs=1)
+        vcd = self._parse_vcd(file, only_sigs=1)
 
         sigs = []
-        for k in vcd.keys():
-            v = vcd[k]
-            nets = v['nets']
-            sigs.extend( n['hier']+'.'+n['name'] for n in nets )
+        for k in vcd:
+            signal = vcd[k]
+            nets = signal['nets']
+            sigs.extend(n['hier']+'.'+n['name'] for n in nets)
 
         return sigs
 
-    def parse_vcd(self, file, only_sigs=0, use_stdout=0, siglist=[], opt_timescale=''):
+    def _parse_vcd(self, file, only_sigs=0, use_stdout=0, siglist=None, opt_timescale=''):
         """Parse input VCD file into data structure.
         Also, print t-v pairs to STDOUT, if requested."""
 
 
         usigs = {}
-        for i in siglist:
-            usigs[i] = 1
+        if siglist:
+            for i in siglist:
+                usigs[i] = 1
 
-        if len(usigs):
+        if usigs:
             all_sigs = 0
         else:
             all_sigs = 1
@@ -67,9 +69,9 @@ class VCDData():
         hier = []
         time = 0
 
-        with open(file, 'r') as fh:
+        with open(file, 'r') as file_handle:
             while True:
-                line = fh.readline()
+                line = file_handle.readline()
                 if line == '': # EOF
                     break
 
@@ -84,34 +86,34 @@ class VCDData():
                 # put most frequent lines encountered at start of if/elif, so other
                 #   clauses usually don't need to be tested
                 if line[0] in ('b', 'B', 'r', 'R'):
-                    (value,code) = line[1:].split()
-                    if (code in data):
-                        if (use_stdout):
-                            print( time, value )
+                    (value, code) = line[1:].split()
+                    if code in data:
+                        if use_stdout:
+                            print(time, value)
                         else:
                             if 'tv' not in data[code]:
                                 data[code]['tv'] = []
-                            data[code]['tv'].append( (time, value) )
+                            data[code]['tv'].append((time, value))
 
                 elif line[0] in ('0', '1', 'x', 'X', 'z', 'Z'):
                     value = line[0]
                     code = line[1:]
-                    if (code in data):
-                        if (use_stdout):
-                            print( time, value )
+                    if code in data:
+                        if use_stdout:
+                            print(time, value)
                         else:
                             if 'tv' not in data[code]:
                                 data[code]['tv'] = []
-                            data[code]['tv'].append( (time, value) )
+                            data[code]['tv'].append((time, value))
 
-                elif line[0]=='#':
+                elif line[0] == '#':
                     time = mult * int(line[1:])
                     self.endtime = time
 
                 elif "$enddefinitions" in line:
                     num_sigs = len(data)
-                    if (num_sigs == 0):
-                        if (all_sigs):
+                    if num_sigs == 0:
+                        if all_sigs:
                             VCDParseError("Error: No signals were found in the "\
                                     "VCD file "+file+". Check the VCD file for "\
                                     "proper var syntax.")
@@ -121,7 +123,7 @@ class VCDData():
                                     "in the VCD file "+file+". Use list_sigs to "\
                                     "view all signals in the VCD file.")
 
-                    if ((num_sigs>1) and use_stdout):
+                    if (num_sigs > 1) and use_stdout:
                         VCDParseError("Error: There are too many signals "\
                                 "(num_sigs) for output to STDOUT.  Use list_sigs "\
                                 "to select a single signal.")
@@ -132,18 +134,18 @@ class VCDData():
                 elif "$timescale" in line:
                     statement = line
                     if not "$end" in line:
-                        while fh:
-                            line = fh.readline()
+                        while file_handle:
+                            line = file_handle.readline()
                             statement += line
                             if "$end" in line:
                                 break
 
-                    mult = self.calc_mult(statement, opt_timescale)
+                    mult = self._calc_mult(statement, opt_timescale)
 
                 elif "$scope" in line:
                     # assumes all on one line
                     #   $scope module dff end
-                    hier.append( line.split()[2] ) # just keep scope name
+                    hier.append(line.split()[2]) # just keep scope name
 
                 elif "$upscope" in line:
                     hier.pop()
@@ -152,11 +154,11 @@ class VCDData():
                     # assumes all on one line:
                     #   $var reg 1 *@ data $end
                     #   $var wire 4 ) addr [3:0] $end
-                    ls = line.split()
-                    type = ls[1]
-                    size = ls[2]
-                    code = ls[3]
-                    name = "".join(ls[4:-1])
+                    line_split = line.split()
+                    sig_type = line_split[1]
+                    size = line_split[2]
+                    code = line_split[3]
+                    name = "".join(line_split[4:-1])
                     path = '.'.join(hier)
                     full_name = path + '.' + name
                     if (full_name in usigs) or all_sigs:
@@ -165,20 +167,20 @@ class VCDData():
                         if 'nets' not in data[code]:
                             data[code]['nets'] = []
                         var_struct = {
-                            'type' : type,
+                            'type' : sig_type,
                             'name' : name,
                             'size' : size,
                             'hier' : path,
                         }
                         if var_struct not in data[code]['nets']:
-                            data[code]['nets'].append( var_struct )
+                            data[code]['nets'].append(var_struct)
 
-        fh.close()
+        file_handle.close()
 
         return data
 
 
-    def calc_mult(self, statement, opt_timescale=''):
+    def _calc_mult(self, statement, opt_timescale=''):
         """
         Calculate a new multiplier for time values.
         Input statement is complete timescale, for example:
@@ -194,7 +196,7 @@ class VCDData():
         tscale = ''.join(fields)
 
         new_units = ''
-        if (opt_timescale != ''):
+        if opt_timescale != '':
             new_units = opt_timescale.lower()
             new_units = re.sub(r"\s", '', new_units)
             self.timescale = "1"+new_units
@@ -208,7 +210,7 @@ class VCDData():
         units = 0
         ts_match = re.match(r"(\d+)([a-z]+)", tscale)
         if ts_match:
-            mult  = int(ts_match.group(1))
+            mult = int(ts_match.group(1))
             units = ts_match.group(2).lower()
 
         else:
@@ -225,7 +227,7 @@ class VCDData():
             's' : 1e-00,
         }
         mults_keys = mults.keys()
-        mults_keys.sort(key=lambda x : mults[x])
+        mults_keys.sort(key=lambda x: mults[x])
         usage = '|'.join(mults_keys)
 
         scale = 0
@@ -246,14 +248,12 @@ class VCDData():
                     "timescale: "+new_units+".  Legal values are: "+usage)
 
 
-        return ((mult * scale) / new_scale)
+        return (mult * scale) / new_scale
 
-
-    def get_timescale():
+    def get_timescale(self):
         return self.timescale
 
-
-    def get_endtime():
+    def get_endtime(self):
         return self.endtime
 
 
@@ -458,7 +458,8 @@ class VCDData():
 #  - Bogdan Tabacaru : Fix bugs in globalness of timescale and endtime
 #  - Andrew Becker : Fix bug in list_sigs
 #  - Pablo Madoery : Found bugs in siglist and opt_timescale features.
-#  - Matthew Clapp itsayellow+dev@gmail.com : Performance speedup, Exception, print, open, etc cleanup to make the code more robust.
+#  - Matthew Clapp itsayellow+dev@gmail.com : Performance speedup, Exception,
+#    print, open, etc cleanup to make the code more robust.
 # Thanks!
 #
 # =head1 COPYRIGHT AND LICENSE

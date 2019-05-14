@@ -35,7 +35,6 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
 
 
 ### TODO
-[*] Implement `step` command
 [ ] Add implementation of manycore model
 [ ] Finalize debugger module
 
