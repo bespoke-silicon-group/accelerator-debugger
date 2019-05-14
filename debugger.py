@@ -5,7 +5,7 @@
 import argparse
 from lib.vcd_parser import VCDData
 from lib.runtime import Runtime
-from manycore_model import ManycoreModel
+from test_model import TestModel
 
 def main():
     """Run the debugger"""
@@ -15,9 +15,9 @@ def main():
 
     args = parser.parse_args()
 
-    vcd = VCDData(args.INPUT)
-    model = ManycoreModel(vcd)
-    print(vcd)
+    model = TestModel()
+    vcd = VCDData(args.INPUT, siglist=model.get_traced_signals())
+    model.set_data(vcd)
 
     runtime = Runtime(None, model)
     runtime.start()

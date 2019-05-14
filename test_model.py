@@ -1,19 +1,16 @@
 #! /usr/bin/env python3
+"""Module to be used for testing with ex.vcd"""
 
 from lib.hw_models import HWModel, HWModule
 
-class ManycoreModel(HWModel):
+class TestModel(HWModel):
     def __init__(self):
         self.modules = []
-        signals = []
-        for i in range(2):
-            for j in range(2):
-                signals.append(f"test_bsg_manycore.UUT.y[{i+1}].x[{j}].tile.\
-proc.h.z.vanilla_core.rf_0.rf_mem.synth.r0_data_o[31:0]")
+        signals = ['logic.data', 'logic.data_valid']
         self.modules.append(HWModule("r0_data", signals))
 
     def get_traced_modules(self):
         return self.modules
 
     def get_step_time(self):
-        return 10
+        return 100

@@ -10,7 +10,7 @@ class VCDParseError(Exception):
 class VCDData():
     def __init__(self, filename, siglist=None):
         self.timescale = None
-        self.vcd = self._parse_vcd(filename, only_sigs=False, use_stdout=False,
+        self.vcd = self._parse_vcd(filename, only_sigs=False,
                                    siglist=siglist, opt_timescale='')
         self.mapping = {}
         for k in self.vcd.keys():
@@ -27,16 +27,17 @@ class VCDData():
         for (tv_time, tv_val) in signal['tv']:
             if value_time < tv_time <= time:
                 curr_value = tv_val
-            elif time < tv_val:
+            elif time < tv_time:
                 break
         return curr_value
 
     def get_symbol(self, name):
         return self.mapping[name]
 
-    def list_sigs(self, file):
-        """Parse input VCD file into data structure,
-        then return just a list of the signal names."""
+    def check_signals(self, file, signals):
+        # TODO unfinished
+        raise NotImplementedError
+        """Parse VCD input file and make sure that all signals exist"""
 
         vcd = self._parse_vcd(file, only_sigs=1)
 
@@ -48,7 +49,8 @@ class VCDData():
 
         return sigs
 
-    def _parse_vcd(self, file, only_sigs=0, use_stdout=0, siglist=None, opt_timescale=''):
+    def _parse_vcd(self, file, only_sigs=0, siglist=None, opt_timescale='',
+                   check_list=None):
         """Parse input VCD file into data structure.
         Also, print t-v pairs to STDOUT, if requested."""
 
@@ -58,10 +60,7 @@ class VCDData():
             for i in siglist:
                 usigs[i] = 1
 
-        if usigs:
-            all_sigs = 0
-        else:
-            all_sigs = 1
+        all_sigs = not bool(usigs)
 
         data = {}
         mult = 0
@@ -88,23 +87,17 @@ class VCDData():
                 if line[0] in ('b', 'B', 'r', 'R'):
                     (value, code) = line[1:].split()
                     if code in data:
-                        if use_stdout:
-                            print(time, value)
-                        else:
-                            if 'tv' not in data[code]:
-                                data[code]['tv'] = []
-                            data[code]['tv'].append((time, value))
+                        if 'tv' not in data[code]:
+                            data[code]['tv'] = []
+                        data[code]['tv'].append((time, value))
 
                 elif line[0] in ('0', '1', 'x', 'X', 'z', 'Z'):
                     value = line[0]
                     code = line[1:]
                     if code in data:
-                        if use_stdout:
-                            print(time, value)
-                        else:
-                            if 'tv' not in data[code]:
-                                data[code]['tv'] = []
-                            data[code]['tv'].append((time, value))
+                        if 'tv' not in data[code]:
+                            data[code]['tv'] = []
+                        data[code]['tv'].append((time, value))
 
                 elif line[0] == '#':
                     time = mult * int(line[1:])
@@ -112,21 +105,15 @@ class VCDData():
 
                 elif "$enddefinitions" in line:
                     num_sigs = len(data)
-                    if num_sigs == 0:
-                        if all_sigs:
-                            VCDParseError("Error: No signals were found in the "\
-                                    "VCD file "+file+". Check the VCD file for "\
-                                    "proper var syntax.")
+                    if not num_sigs and all_sigs:
+                        VCDParseError("Error: No signals were found in the "\
+                                "VCD file "+file+". Check the VCD file for "\
+                                "proper var syntax.")
 
-                        else:
-                            VCDParseError("Error: No matching signals were found "\
-                                    "in the VCD file "+file+". Use list_sigs to "\
-                                    "view all signals in the VCD file.")
-
-                    if (num_sigs > 1) and use_stdout:
-                        VCDParseError("Error: There are too many signals "\
-                                "(num_sigs) for output to STDOUT.  Use list_sigs "\
-                                "to select a single signal.")
+                    elif not num_sigs:
+                        VCDParseError("Error: No matching signals were found "\
+                                "in the VCD file "+file+". Use list_sigs to "\
+                                "view all signals in the VCD file.")
 
                     if only_sigs:
                         break
@@ -155,9 +142,7 @@ class VCDData():
                     #   $var reg 1 *@ data $end
                     #   $var wire 4 ) addr [3:0] $end
                     line_split = line.split()
-                    sig_type = line_split[1]
-                    size = line_split[2]
-                    code = line_split[3]
+                    (sig_type, size, code) = line_split[1:4]
                     name = "".join(line_split[4:-1])
                     path = '.'.join(hier)
                     full_name = path + '.' + name
@@ -353,29 +338,6 @@ class VCDData():
 # Limiting the number of signals can substantially reduce memory usage of the
 # returned data structure because only the time-value data for the selected
 # signals is loaded into the data structure.
-#
-# =item use_stdout
-#
-# It is possible to print time-value pairs directly to STDOUT for a
-# single signal using the C<use_stdout> option.  If the VCD file has
-# more than one signal, the C<siglist> option must also be used, and there
-# must only be one signal specified.  For example:
-#
-#     vcd = parse_vcd(file,
-#                     use_stdout=1,
-#                     siglist=['top.clk']
-#                 )
-#
-# The time-value pairs are output as space-separated tokens, one per line.
-# For example:
-#
-#     0 x
-#     15 0
-#     277 1
-#     500 0
-#
-# Times are listed in the first column.
-# Times units can be controlled by the C<timescale> option.
 #
 # =item only_sigs
 #

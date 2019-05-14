@@ -60,7 +60,8 @@ class Runtime():
                 exit(0)
             text = text.strip().split()
             if text[0] == 'list':
-                print(self.model.get_traced_modules())
+                for module in self.model.get_traced_modules():
+                    print(module.get_name())
             elif text[0] == 'info':
                 modules = self.model.get_traced_modules()
                 req_module = [m for m in modules if m.get_name() == text[1]]

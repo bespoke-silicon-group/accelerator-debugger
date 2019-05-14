@@ -35,10 +35,13 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
 
 
 ### TODO
-[ ] Add implementation of manycore model
+[*] Add implementation of manycore model
 [ ] Finalize debugger module
-
-### Stretch TODO
-[ ] Clean up vcd_parser
+[ ] Testing
+[ ] vcd parser should check that signals exist before finishing parsing
 [ ] Implement data memory storage
+
+[ ] Clean up vcd_parser
+
+### Extra stretch
 [ ] Implement breakpoints
