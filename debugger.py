@@ -3,8 +3,8 @@
 # Eventually, assign HW modules to panels, update panels in parallel
 
 import argparse
-from vcd_parser import VCDData
-from runtime import Runtime
+from lib.vcd_parser import VCDData
+from lib.runtime import Runtime
 from manycore_model import ManycoreModel
 
 def main():

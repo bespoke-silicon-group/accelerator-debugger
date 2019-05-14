@@ -1,8 +1,8 @@
 #! /usr/bin/env python3
 
-import hw_models
+from lib.hw_models import HWModel
 
-class ManycoreModel(hw_models.HWModel):
+class ManycoreModel(HWModel):
     def __init__(self, vcd_data):
         self.data = vcd_data
         self.modules = []
