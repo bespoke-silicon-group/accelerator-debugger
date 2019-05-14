@@ -3,9 +3,11 @@
 
 import re
 
+
 # our local exception for VCD parsing errors (inherited from Exception)
 class VCDParseError(Exception):
     pass
+
 
 class VCDData():
     def __init__(self, filename, siglist=None):
@@ -54,7 +56,6 @@ class VCDData():
         """Parse input VCD file into data structure.
         Also, print t-v pairs to STDOUT, if requested."""
 
-
         usigs = {}
         if siglist:
             for i in siglist:
@@ -71,7 +72,7 @@ class VCDData():
         with open(file, 'r') as file_handle:
             while True:
                 line = file_handle.readline()
-                if line == '': # EOF
+                if line == '':  # EOF
                     break
 
                 # chomp
@@ -82,8 +83,8 @@ class VCDData():
                 if line == '':
                     continue
 
-                # put most frequent lines encountered at start of if/elif, so other
-                #   clauses usually don't need to be tested
+                # put most frequent lines encountered at start of case,
+                # so other clauses usually don't need to be tested
                 if line[0] in ('b', 'B', 'r', 'R'):
                     (value, code) = line[1:].split()
                     if code in data:
@@ -106,21 +107,21 @@ class VCDData():
                 elif "$enddefinitions" in line:
                     num_sigs = len(data)
                     if not num_sigs and all_sigs:
-                        VCDParseError("Error: No signals were found in the "\
-                                "VCD file "+file+". Check the VCD file for "\
-                                "proper var syntax.")
+                        VCDParseError("Error: No signals were found in the "
+                                      "VCD file "+file+". Check the VCD file "
+                                      "for proper var syntax.")
 
                     elif not num_sigs:
-                        VCDParseError("Error: No matching signals were found "\
-                                "in the VCD file "+file+". Use list_sigs to "\
-                                "view all signals in the VCD file.")
+                        VCDParseError("Error: No matching signals were found "
+                                      "in the VCD file "+file+". Use list_sigs"
+                                      " to view all signals in the VCD file.")
 
                     if only_sigs:
                         break
 
                 elif "$timescale" in line:
                     statement = line
-                    if not "$end" in line:
+                    if "$end" not in line:
                         while file_handle:
                             line = file_handle.readline()
                             statement += line
@@ -132,7 +133,7 @@ class VCDData():
                 elif "$scope" in line:
                     # assumes all on one line
                     #   $scope module dff end
-                    hier.append(line.split()[2]) # just keep scope name
+                    hier.append(line.split()[2])  # just keep scope name
 
                 elif "$upscope" in line:
                     hier.pop()
@@ -152,10 +153,10 @@ class VCDData():
                         if 'nets' not in data[code]:
                             data[code]['nets'] = []
                         var_struct = {
-                            'type' : sig_type,
-                            'name' : name,
-                            'size' : size,
-                            'hier' : path,
+                            'type': sig_type,
+                            'name': name,
+                            'size': size,
+                            'hier': path,
                         }
                         if var_struct not in data[code]['nets']:
                             data[code]['nets'].append(var_struct)
@@ -163,7 +164,6 @@ class VCDData():
         file_handle.close()
 
         return data
-
 
     def _calc_mult(self, statement, opt_timescale=''):
         """
@@ -190,7 +190,6 @@ class VCDData():
             self.timescale = tscale
             return 1
 
-
         mult = 0
         units = 0
         ts_match = re.match(r"(\d+)([a-z]+)", tscale)
@@ -199,17 +198,16 @@ class VCDData():
             units = ts_match.group(2).lower()
 
         else:
-            VCDParseError("Error: Unsupported timescale found in VCD "\
-                    "file: "+tscale+".  Refer to the Verilog LRM.")
-
+            VCDParseError("Error: Unsupported timescale found in VCD "
+                          "file: "+tscale+".  Refer to the Verilog LRM.")
 
         mults = {
-            'fs' : 1e-15,
-            'ps' : 1e-12,
-            'ns' : 1e-09,
-            'us' : 1e-06,
-            'ms' : 1e-03,
-            's' : 1e-00,
+            'fs': 1e-15,
+            'ps': 1e-12,
+            'ns': 1e-09,
+            'us': 1e-06,
+            'ms': 1e-03,
+            's': 1e-00,
         }
         mults_keys = mults.keys()
         mults_keys.sort(key=lambda x: mults[x])
@@ -220,18 +218,17 @@ class VCDData():
             scale = mults[units]
 
         else:
-            VCDParseError("Error: Unsupported timescale units found in VCD "\
-                    "file: "+units+".  Supported values are: "+usage)
-
+            VCDParseError("Error: Unsupported timescale units found in VCD "
+                          "file: "+units+".  Supported values are: "+usage)
 
         new_scale = 0
         if new_units in mults:
             new_scale = mults[new_units]
 
         else:
-            VCDParseError("Error: Illegal user-supplied "\
-                    "timescale: "+new_units+".  Legal values are: "+usage)
-
+            VCDParseError("Error: Illegal user-supplied "
+                          "timescale: "+new_units+".  Legal values are: " +
+                          usage)
 
         return (mult * scale) / new_scale
 
@@ -300,8 +297,8 @@ class VCDData():
 #     }
 #
 # Since each code could have multiple hierarchical signal names, the names are
-# stored as an Array-of-Hashes, referenced by the C<nets> key.  The example above
-# only shows one signal name for the code.
+# stored as an Array-of-Hashes, referenced by the C<nets> key.  The example
+# above only shows one signal name for the code.
 #
 #
 # =head3 OPTIONS
@@ -399,15 +396,16 @@ class VCDData():
 # The extended VCD format (with strength information) is not supported.
 #
 # The default mode of C<parse_vcd> is to load the entire VCD file into the
-# data structure.  This could be a problem for huge VCD files.  The best solution
-# to any memory problem is to plan ahead and keep VCD files as small as possible.
+# data structure.  This could be a problem for huge VCD files.  The best
+# solution to any memory problem is to plan ahead and keep VCD files as small
+# as possible.
 # When simulating, dump fewer signals and scopes, and use shorter dumping
 # time ranges.  Another technique is to parse only a small list of signals
 # using the C<siglist> option; this method only loads the desired signals into
-# the data structure.  Finally, the C<use_stdout> option will parse the input VCD
-# file line-by-line, instead of loading it into the data structure, and directly
-# prints time-value data to STDOUT.  The drawback is that this only applies to
-# one signal.
+# the data structure.  Finally, the C<use_stdout> option will parse the input
+# VCD file line-by-line, instead of loading it into the data structure, and
+# directly prints time-value data to STDOUT.  The drawback is that this only
+# applies to one signal.
 #
 # =head1 AUTHOR
 #

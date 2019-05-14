@@ -6,6 +6,7 @@ from prompt_toolkit.styles import Style
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.validation import Validator, ValidationError
 
+
 class InputValidator(Validator):
     def validate(self, document):
         text = document.text.strip().split()

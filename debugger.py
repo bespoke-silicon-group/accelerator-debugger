@@ -7,6 +7,7 @@ from lib.vcd_parser import VCDData
 from lib.runtime import Runtime
 from test_model import TestModel
 
+
 def main():
     """Run the debugger"""
     parser = argparse.ArgumentParser(description='VCD Trace Debugger')
@@ -21,6 +22,7 @@ def main():
 
     runtime = Runtime(None, model)
     runtime.start()
+
 
 if __name__ == "__main__":
     main()

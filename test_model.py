@@ -3,6 +3,7 @@
 
 from lib.hw_models import HWModel, HWModule
 
+
 class TestModel(HWModel):
     def __init__(self):
         self.modules = []

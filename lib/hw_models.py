@@ -2,6 +2,7 @@
 
 import abc
 
+
 class Signal():
     """Signals are compsed of the VCD symbol that represents the signal,
     the name of the signal in the HW module that's it's part of, and
@@ -13,6 +14,7 @@ class Signal():
 
     def __str__(self):
         return f"{self.name} ({self.symbol}): {self.value}"
+
 
 # Stepping a simulation should just be stepping a HWModel, which
 # steps all the module contained within it. Then, we can update

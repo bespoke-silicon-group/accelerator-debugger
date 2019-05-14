@@ -2,6 +2,7 @@
 
 from lib.hw_models import HWModel, HWModule
 
+
 class ManycoreModel(HWModel):
     def __init__(self):
         self.modules = []
