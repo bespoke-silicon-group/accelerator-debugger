@@ -3,241 +3,258 @@
 
 import re
 
-global timescale
-global endtime
-
-
 # our local exception for VCD parsing errors (inherited from Exception)
 class VCDParseError(Exception):
     pass
 
+class VCDData():
+    def __init__(self, filename, siglist=[]):
+        self.vcd = self.parse_vcd(filename, only_sigs=False, use_stdout=False,
+                                  siglist=siglist, opt_timescale='')
+        self.mapping = {}
+        for k in self.vcd.keys():
+            v = self.vcd[k]
+            nets = v['nets']
+            for n in nets:
+                self.mapping[n['hier']+'.'+n['name']] = k
 
-def list_sigs(file):
-    """Parse input VCD file into data structure,
-    then return just a list of the signal names."""
-
-    vcd = parse_vcd(file, only_sigs=1)
-
-    sigs = []
-    for k in vcd.keys():
-        v = vcd[k]
-        nets = v['nets']
-        sigs.extend( n['hier']+'.'+n['name'] for n in nets )
-
-    return sigs
-
-
-def parse_vcd(file, only_sigs=0, use_stdout=0, siglist=[], opt_timescale=''):
-    """Parse input VCD file into data structure.
-    Also, print t-v pairs to STDOUT, if requested."""
-
-    global endtime
-
-    usigs = {}
-    for i in siglist:
-        usigs[i] = 1
-
-    if len(usigs):
-        all_sigs = 0
-    else:
-        all_sigs = 1
-
-    data = {}
-    mult = 0
-    num_sigs = 0
-    hier = []
-    time = 0
-
-    with open(file, 'r') as fh:
-        while True:
-            line = fh.readline()
-            if line == '': # EOF
+    def get_value(self, symbol, time):
+        # TODO This could be sped up by saving a pointer to the last time
+        signal = self.vcd[symbol]
+        curr_value = None
+        value_time = -1
+        for (tv_time, tv_val) in signal['tv']:
+            if value_time < tv_time <= time:
+                curr_value = tv_val
+            elif time < tv_val:
                 break
+        return curr_value
 
-            # chomp
-            # s/ ^ \s+ //x
-            line = line.strip()
+    def get_symbol(self, name):
+        return self.mapping[name]
 
-            # if nothing left after we strip whitespace, go to next line
-            if line == '':
-                continue
+    def list_sigs(file):
+        """Parse input VCD file into data structure,
+        then return just a list of the signal names."""
 
-            # put most frequent lines encountered at start of if/elif, so other
-            #   clauses usually don't need to be tested
-            if line[0] in ('b', 'B', 'r', 'R'):
-                (value,code) = line[1:].split()
-                if (code in data):
-                    if (use_stdout):
-                        print( time, value )
-                    else:
-                        if 'tv' not in data[code]:
-                            data[code]['tv'] = []
-                        data[code]['tv'].append( (time, value) )
+        vcd = self.parse_vcd(file, only_sigs=1)
 
-            elif line[0] in ('0', '1', 'x', 'X', 'z', 'Z'):
-                value = line[0]
-                code = line[1:]
-                if (code in data):
-                    if (use_stdout):
-                        print( time, value )
-                    else:
-                        if 'tv' not in data[code]:
-                            data[code]['tv'] = []
-                        data[code]['tv'].append( (time, value) )
+        sigs = []
+        for k in vcd.keys():
+            v = vcd[k]
+            nets = v['nets']
+            sigs.extend( n['hier']+'.'+n['name'] for n in nets )
 
-            elif line[0]=='#':
-                time = mult * int(line[1:])
-                endtime = time
+        return sigs
 
-            elif "$enddefinitions" in line:
-                num_sigs = len(data)
-                if (num_sigs == 0):
-                    if (all_sigs):
-                        VCDParseError("Error: No signals were found in the "\
-                                "VCD file "+file+". Check the VCD file for "\
-                                "proper var syntax.")
+    def parse_vcd(self, file, only_sigs=0, use_stdout=0, siglist=[], opt_timescale=''):
+        """Parse input VCD file into data structure.
+        Also, print t-v pairs to STDOUT, if requested."""
 
-                    else:
-                        VCDParseError("Error: No matching signals were found "\
-                                "in the VCD file "+file+". Use list_sigs to "\
-                                "view all signals in the VCD file.")
 
-                if ((num_sigs>1) and use_stdout):
-                    VCDParseError("Error: There are too many signals "\
-                            "(num_sigs) for output to STDOUT.  Use list_sigs "\
-                            "to select a single signal.")
+        usigs = {}
+        for i in siglist:
+            usigs[i] = 1
 
-                if only_sigs:
+        if len(usigs):
+            all_sigs = 0
+        else:
+            all_sigs = 1
+
+        data = {}
+        mult = 0
+        num_sigs = 0
+        hier = []
+        time = 0
+
+        with open(file, 'r') as fh:
+            while True:
+                line = fh.readline()
+                if line == '': # EOF
                     break
 
-            elif "$timescale" in line:
-                statement = line
-                if not "$end" in line:
-                    while fh:
-                        line = fh.readline()
-                        statement += line
-                        if "$end" in line:
-                            break
+                # chomp
+                # s/ ^ \s+ //x
+                line = line.strip()
 
-                mult = calc_mult(statement, opt_timescale)
+                # if nothing left after we strip whitespace, go to next line
+                if line == '':
+                    continue
 
-            elif "$scope" in line:
-                # assumes all on one line
-                #   $scope module dff end
-                hier.append( line.split()[2] ) # just keep scope name
+                # put most frequent lines encountered at start of if/elif, so other
+                #   clauses usually don't need to be tested
+                if line[0] in ('b', 'B', 'r', 'R'):
+                    (value,code) = line[1:].split()
+                    if (code in data):
+                        if (use_stdout):
+                            print( time, value )
+                        else:
+                            if 'tv' not in data[code]:
+                                data[code]['tv'] = []
+                            data[code]['tv'].append( (time, value) )
 
-            elif "$upscope" in line:
-                hier.pop()
+                elif line[0] in ('0', '1', 'x', 'X', 'z', 'Z'):
+                    value = line[0]
+                    code = line[1:]
+                    if (code in data):
+                        if (use_stdout):
+                            print( time, value )
+                        else:
+                            if 'tv' not in data[code]:
+                                data[code]['tv'] = []
+                            data[code]['tv'].append( (time, value) )
 
-            elif "$var" in line:
-                # assumes all on one line:
-                #   $var reg 1 *@ data $end
-                #   $var wire 4 ) addr [3:0] $end
-                ls = line.split()
-                type = ls[1]
-                size = ls[2]
-                code = ls[3]
-                name = "".join(ls[4:-1])
-                path = '.'.join(hier)
-                full_name = path + '.' + name
-                if (full_name in usigs) or all_sigs:
-                  if code not in data:
-                      data[code] = {}
-                  if 'nets' not in data[code]:
-                      data[code]['nets'] = []
-                  var_struct = {
-                      'type' : type,
-                      'name' : name,
-                      'size' : size,
-                      'hier' : path,
-                   }
-                  if var_struct not in data[code]['nets']:
-                      data[code]['nets'].append( var_struct )
+                elif line[0]=='#':
+                    time = mult * int(line[1:])
+                    self.endtime = time
 
-    fh.close()
+                elif "$enddefinitions" in line:
+                    num_sigs = len(data)
+                    if (num_sigs == 0):
+                        if (all_sigs):
+                            VCDParseError("Error: No signals were found in the "\
+                                    "VCD file "+file+". Check the VCD file for "\
+                                    "proper var syntax.")
 
-    return data
+                        else:
+                            VCDParseError("Error: No matching signals were found "\
+                                    "in the VCD file "+file+". Use list_sigs to "\
+                                    "view all signals in the VCD file.")
 
+                    if ((num_sigs>1) and use_stdout):
+                        VCDParseError("Error: There are too many signals "\
+                                "(num_sigs) for output to STDOUT.  Use list_sigs "\
+                                "to select a single signal.")
 
-def calc_mult (statement, opt_timescale=''):
-    """
-    Calculate a new multiplier for time values.
-    Input statement is complete timescale, for example:
-      timescale 10ns end
-    Input new_units is one of s|ms|us|ns|ps|fs.
-    Return numeric multiplier.
-    Also sets the package timescale variable.
-    """
+                    if only_sigs:
+                        break
 
-    global timescale
+                elif "$timescale" in line:
+                    statement = line
+                    if not "$end" in line:
+                        while fh:
+                            line = fh.readline()
+                            statement += line
+                            if "$end" in line:
+                                break
 
-    fields = statement.split()
-    fields.pop()   # delete end from array
-    fields.pop(0)  # delete timescale from array
-    tscale = ''.join(fields)
+                    mult = self.calc_mult(statement, opt_timescale)
 
-    new_units = ''
-    if (opt_timescale != ''):
-        new_units = opt_timescale.lower()
-        new_units = re.sub(r"\s", '', new_units)
-        timescale = "1"+new_units
+                elif "$scope" in line:
+                    # assumes all on one line
+                    #   $scope module dff end
+                    hier.append( line.split()[2] ) # just keep scope name
 
-    else:
-        timescale = tscale
-        return 1
+                elif "$upscope" in line:
+                    hier.pop()
 
+                elif "$var" in line:
+                    # assumes all on one line:
+                    #   $var reg 1 *@ data $end
+                    #   $var wire 4 ) addr [3:0] $end
+                    ls = line.split()
+                    type = ls[1]
+                    size = ls[2]
+                    code = ls[3]
+                    name = "".join(ls[4:-1])
+                    path = '.'.join(hier)
+                    full_name = path + '.' + name
+                    if (full_name in usigs) or all_sigs:
+                        if code not in data:
+                            data[code] = {}
+                        if 'nets' not in data[code]:
+                            data[code]['nets'] = []
+                        var_struct = {
+                            'type' : type,
+                            'name' : name,
+                            'size' : size,
+                            'hier' : path,
+                        }
+                        if var_struct not in data[code]['nets']:
+                            data[code]['nets'].append( var_struct )
 
-    mult = 0
-    units = 0
-    ts_match = re.match(r"(\d+)([a-z]+)", tscale)
-    if ts_match:
-        mult  = int(ts_match.group(1))
-        units = ts_match.group(2).lower()
+        fh.close()
 
-    else:
-        VCDParseError("Error: Unsupported timescale found in VCD "\
-                "file: "+tscale+".  Refer to the Verilog LRM.")
-
-
-    mults = {
-        'fs' : 1e-15,
-        'ps' : 1e-12,
-        'ns' : 1e-09,
-        'us' : 1e-06,
-        'ms' : 1e-03,
-         's' : 1e-00,
-    }
-    mults_keys = mults.keys()
-    mults_keys.sort(key=lambda x : mults[x])
-    usage = '|'.join(mults_keys)
-
-    scale = 0
-    if units in mults:
-        scale = mults[units]
-
-    else:
-        VCDParseError("Error: Unsupported timescale units found in VCD "\
-                "file: "+units+".  Supported values are: "+usage)
+        return data
 
 
-    new_scale = 0
-    if new_units in mults:
-        new_scale = mults[new_units]
+    def calc_mult(self, statement, opt_timescale=''):
+        """
+        Calculate a new multiplier for time values.
+        Input statement is complete timescale, for example:
+        timescale 10ns end
+        Input new_units is one of s|ms|us|ns|ps|fs.
+        Return numeric multiplier.
+        Also sets the package timescale variable.
+        """
 
-    else:
-        VCDParseError("Error: Illegal user-supplied "\
-                "timescale: "+new_units+".  Legal values are: "+usage)
+        fields = statement.split()
+        fields.pop()   # delete end from array
+        fields.pop(0)  # delete timescale from array
+        tscale = ''.join(fields)
+
+        new_units = ''
+        if (opt_timescale != ''):
+            new_units = opt_timescale.lower()
+            new_units = re.sub(r"\s", '', new_units)
+            self.timescale = "1"+new_units
+
+        else:
+            self.timescale = tscale
+            return 1
 
 
-    return ((mult * scale) / new_scale)
+        mult = 0
+        units = 0
+        ts_match = re.match(r"(\d+)([a-z]+)", tscale)
+        if ts_match:
+            mult  = int(ts_match.group(1))
+            units = ts_match.group(2).lower()
+
+        else:
+            VCDParseError("Error: Unsupported timescale found in VCD "\
+                    "file: "+tscale+".  Refer to the Verilog LRM.")
 
 
-def get_timescale():
-    return timescale
+        mults = {
+            'fs' : 1e-15,
+            'ps' : 1e-12,
+            'ns' : 1e-09,
+            'us' : 1e-06,
+            'ms' : 1e-03,
+            's' : 1e-00,
+        }
+        mults_keys = mults.keys()
+        mults_keys.sort(key=lambda x : mults[x])
+        usage = '|'.join(mults_keys)
+
+        scale = 0
+        if units in mults:
+            scale = mults[units]
+
+        else:
+            VCDParseError("Error: Unsupported timescale units found in VCD "\
+                    "file: "+units+".  Supported values are: "+usage)
 
 
-def get_endtime():
-    return endtime
+        new_scale = 0
+        if new_units in mults:
+            new_scale = mults[new_units]
+
+        else:
+            VCDParseError("Error: Illegal user-supplied "\
+                    "timescale: "+new_units+".  Legal values are: "+usage)
+
+
+        return ((mult * scale) / new_scale)
+
+
+    def get_timescale():
+        return self.timescale
+
+
+    def get_endtime():
+        return self.endtime
 
 
 # =head1 NAME
@@ -253,27 +270,7 @@ def get_endtime():
 #     from Verilog_VCD import parse_vcd
 #     vcd = parse_vcd('/path/to/some.vcd')
 #
-# =head1 DESCRIPTION
-#
-# Verilog is a Hardware Description Language (HDL) used to model digital logic.
-# While simulating logic circuits, the values of signals can be written out to
-# a Value Change Dump (VCD) file.  This module can be used to parse a VCD file
-# so that further analysis can be performed on the simulation data.  The entire
-# VCD file can be stored in a Python data structure and manipulated using
-# standard hash and array operations.  This module is also a good helper for
-# parsing fsdb files, since you can run fsd2vcd(part of the novas installation)
-# to convert them to the vcd format and then use this module.
-#
-# =head2 Input File Syntax
-#
-# The syntax of the VCD text file is described in the documentation of
-# the IEEE standard for Verilog.  Only the four-state VCD format is supported.
-# The extended VCD format (with strength information) is not supported.
-# Since the input file is assumed to be legal VCD syntax, only minimal
-# validation is performed.
-#
 # =head1 SUBROUTINES
-#
 #
 # =head2 parse_vcd(file, $opt_ref)
 #
@@ -429,15 +426,6 @@ def get_endtime():
 #     vcd = parse_vcd(file); # Parse a file first
 #     et  = get_endtime();    # Then query the endtime
 #
-# =head1 EXPORT
-#
-# Nothing is exported by default.  Functions may be exported individually, or
-# all functions may be exported at once, using the special tag C<:all>.
-#
-# =head1 DIAGNOSTICS
-#
-# Error conditions cause the program to raise an Exception.
-#
 # =head1 LIMITATIONS
 #
 # Only the following VCD keywords are parsed:
@@ -458,18 +446,6 @@ def get_endtime():
 # file line-by-line, instead of loading it into the data structure, and directly
 # prints time-value data to STDOUT.  The drawback is that this only applies to
 # one signal.
-#
-# =head1 BUGS
-#
-# There are no known bugs in this module.
-#
-# =head1 SEE ALSO
-#
-# Refer to the following Verilog documentation:
-#
-#     IEEE Standard for Verilog (c) Hardware Description Language
-#     IEEE Std 1364-2005
-#     Section 18.2, "Format of four-state VCD file"
 #
 # =head1 AUTHOR
 #
@@ -493,4 +469,3 @@ def get_endtime():
 # it under the same terms as Perl itself.  See L<perlartistic|perlartistic>.
 #
 # =cut
-

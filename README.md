@@ -25,3 +25,21 @@ After pipenv is installed, packages can be installed with:
 
 The project can be run with:
 `pipenv run python <python_file>`
+
+
+## Getting Started
+For ease of compatibility, we only support VCD (value change dump) files,
+instead of Synopsys's proprietary VPD file format. To convert between VPD files
+and VCD files, Synopsys provides a tool with a standard VCS installation:
+`vpd2vcd <input_vpd_file> <output_vcd_file>`
+
+
+### TODO
+[*] Implement `step` command
+[ ] Add implementation of manycore model
+[ ] Finalize debugger module
+
+### Stretch TODO
+[ ] Clean up vcd_parser
+[ ] Implement data memory storage
+[ ] Implement breakpoints
