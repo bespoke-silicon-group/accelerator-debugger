@@ -33,9 +33,12 @@ instead of Synopsys's proprietary VPD file format. To convert between VPD files
 and VCD files, Synopsys provides a tool with a standard VCS installation:
 `vpd2vcd <input_vpd_file> <output_vcd_file>`
 
+### Sim notes
+ Stepping a simulation should just be stepping a HWModel, which
+ steps all the module contained within it. Then, we can update
+ each pane with the new information.
 
 ### TODO
-[ ] Implement data memory storage
 [ ] Clean up vcd_parser
 
 ### Extra stretch

@@ -14,12 +14,16 @@ $var wire 1 $ data_valid $end
 $var wire 1 % en $end
 $var wire 1 & rx_en $end
 $var wire 1 ' tx_en $end
+$var wire 8 * wdata $end
+$var wire 3 [ waddr $end
 $var wire 1 ( empty $end
 $var wire 1 ) underrun $end
 $upscope $end
 $enddefinitions $end
 $dumpvars
 bxxxxxxxx #
+bxxxxxxxx *
+bxxx [
 x$
 0%
 x&
@@ -32,6 +36,8 @@ b10000001 #
 0$
 1%
 0&
+b100 [
+b11110000 *
 1'
 0(
 0)

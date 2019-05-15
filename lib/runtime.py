@@ -75,5 +75,4 @@ class Runtime():
                     num_steps = int(text[1])
                 else:
                     num_steps = 1
-                sim_time += self.model.get_step_time() * num_steps
-                self.model.update(sim_time)
+                sim_time = self.model.update(sim_time, num_steps)
