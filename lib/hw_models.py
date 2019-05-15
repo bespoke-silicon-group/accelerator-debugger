@@ -2,6 +2,13 @@
 
 import abc
 
+def bin_to_hex(bin_num):
+    if 'x' in bin_num or 'X' in bin_num:
+        return f"{len(bin_num)}'h" + ((len(bin_num)) // 4 * 'x')
+    elif 'z' in bin_num or 'Z' in bin_num:
+        return f"{len(bin_num)}'h" + ((len(bin_num)) // 4 * 'z')
+    else:
+        return hex(int(bin_num, 2))
 
 class Signal():
     """Signals are compsed of the VCD symbol that represents the signal,
@@ -13,7 +20,8 @@ class Signal():
         self.value = value
 
     def __str__(self):
-        return f"{self.name} ({self.symbol}): {self.value}"
+        short_name = self.name.split('.')[-1]
+        return f"{short_name}: {bin_to_hex(self.value)}"
 
 
 class HWModule(metaclass=abc.ABCMeta):
@@ -71,28 +79,39 @@ class Memory(HWModule):
         self.size = size
         # If the user gave a size, we should allocate memory
         if self.size:
-            self.memory = [0] * self.size
+            self.memory = ['0'] * self.size
         else:
             self.memory = {}
         self.enable_level = enable_level
         self.data = None
+
+    @staticmethod
+    def print_mem_table(seq, columns=2):
+        table = ''
+        col_height = len(seq) // columns
+        for x in range(col_height):
+            for col in range(columns):
+                pos = (x * columns) + col
+                num = seq[x + (col_height * col)]
+                table += f"({pos}) {bin_to_hex(num)}".ljust(16)
+            table += '\n'
+        return table
 
     def __str__(self):
         desc = self.get_name() + ": "
         for signal in self.get_signals():
             desc += f"\n\t{str(signal)}"
         if self.size:
-            for addr in range(len(self.memory)):
-                desc += f"\n\t\t{addr}: {self.memory[addr]}"
+            desc += "\n" + self.print_mem_table(self.memory, columns=3)
         else:
-            for addr in self.memory:
-                desc += f"\n\t\t{addr}: {self.memory[addr]}"
+            for addr, value in enumerate(self.memory):
+                desc += f"\n\t\t{addr}: {bin_to_hex(value)}"
         return desc
 
     def write_if_en(self):
         en_str = self.signals[2].value
         en_val = int(en_str) if 'x' not in en_str else not self.enable_level
-        if en_val == int(self.enable_level)
+        if en_val == int(self.enable_level):
             mem_addr = self.signals[0].value
             if self.size:
                 if 'x' in mem_addr:
