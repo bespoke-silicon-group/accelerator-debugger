@@ -60,14 +60,20 @@ class BasicModule(HWModule):
             signal.value = self.data.get_value(signal.symbol, new_time)
 
 
-class LazyMemory(HWModule):
-    """A LazyMemory module tracks the accesses to a memory, but only
-    after writes has occurred. It assumes that memory is initalized to 'x'"""
-    def __init__(self, module_name, addr, wdata, enable, enable_level):
+class Memory(HWModule):
+    """A memory traces when writes occur based on the enable signal.
+    If a size is given, we allocated a memory of the given size,
+    otherwise memory locations are allocated lazily when writes occur"""
+    def __init__(self, module_name, addr, wdata, enable, enable_level, size=0):
         self.signal_names = [addr, wdata, enable]
         self.name = module_name
         self.signals = []
-        self.memory = {}
+        self.size = size
+        # If the user gave a size, we should allocate memory
+        if self.size:
+            self.memory = [0] * self.size
+        else:
+            self.memory = {}
         self.enable_level = enable_level
         self.data = None
 
@@ -75,16 +81,27 @@ class LazyMemory(HWModule):
         desc = self.get_name() + ": "
         for signal in self.get_signals():
             desc += f"\n\t{str(signal)}"
-        for addr in self.memory:
-            desc += f"\n\t\t{addr}: {self.memory[addr]}"
+        if self.size:
+            for addr in range(len(self.memory)):
+                desc += f"\n\t\t{addr}: {self.memory[addr]}"
+        else:
+            for addr in self.memory:
+                desc += f"\n\t\t{addr}: {self.memory[addr]}"
         return desc
 
     def write_if_en(self):
-        if bool(self.signals[2].value) == self.enable_level:
-            self.memory[self.signals[0].value] = self.signals[1].value
+        en_str = self.signals[2].value
+        en_val = int(en_str) if 'x' not in en_str else not self.enable_level
+        if en_val == int(self.enable_level)
+            mem_addr = self.signals[0].value
+            if self.size:
+                if 'x' in mem_addr:
+                    return
+                mem_addr = int(mem_addr, 2)
+            self.memory[mem_addr] = self.signals[1].value
 
     def set_data(self, data):
-        super(LazyMemory, self).set_data(data)
+        super(Memory, self).set_data(data)
         self.write_if_en()
 
     def update_signals(self, curr_time, steps, step_time):
@@ -118,7 +135,6 @@ class HWModel(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     def update(self, curr_time, steps):
-        print(curr_time, steps)
         step_time = self.get_step_time()
         for module in self.get_traced_modules():
             module.update_signals(curr_time, steps, step_time)

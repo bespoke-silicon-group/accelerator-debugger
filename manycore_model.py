@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 
-from lib.hw_models import HWModel, HWModule
+from lib.hw_models import HWModel, BasicModule, Memory
 
 
 class ManycoreModel(HWModel):
@@ -9,9 +9,15 @@ class ManycoreModel(HWModel):
         signals = []
         for i in range(2):
             for j in range(2):
-                signals.append(f"test_bsg_manycore.UUT.y[{i+1}].x[{j}].tile.\
-proc.h.z.vanilla_core.rf_0.rf_mem.synth.r0_data_o[31:0]")
-        self.modules.append(HWModule("r0_data", signals))
+                header = f"test_bsg_manycore.UUT.y[{i+1}].x[{j}].tile."
+                header += "proc.h.z.vanilla_core."
+                signals.append(header + "rf_0.r0_data_o[31:0]")
+                addr = header + "rf_wa[4:0]"
+                wdata = header + "rf_wd[31:0]"
+                wen = header + "rf_wen"
+                self.modules.append(Memory(f"{i}_{j}_rf", addr, wdata, wen,
+                                           True, size=32))
+        self.modules.append(BasicModule("r0_data", signals))
 
     def get_traced_modules(self):
         return self.modules

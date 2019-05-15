@@ -6,6 +6,7 @@ import argparse
 from lib.vcd_parser import VCDData
 from lib.runtime import Runtime
 from test_model import TestModel
+from manycore_model import ManycoreModel
 
 
 def main():
@@ -16,7 +17,7 @@ def main():
 
     args = parser.parse_args()
 
-    model = TestModel()
+    model = ManycoreModel()
 
     vcd = VCDData(args.INPUT, siglist=model.get_signal_names())
     model.set_data(vcd)

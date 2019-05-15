@@ -12,8 +12,7 @@ class VCDParseError(Exception):
 class VCDData():
     def __init__(self, filename, siglist=None):
         self.timescale = None
-        if not self.check_signals(filename, siglist):
-            raise ValueError("Not all signals found")
+        self.check_signals(filename, siglist)
 
         self.vcd = self._parse_vcd(filename, only_sigs=False,
                                    siglist=siglist, opt_timescale='')
@@ -42,7 +41,16 @@ class VCDData():
     def check_signals(self, file, signals):
         """Parse VCD input file and make sure that all signals exist"""
         vcd = self._parse_vcd(file, siglist=signals, only_sigs=1)
-        return len(vcd.keys()) == len(signals)
+        if len(vcd.keys()) != len(signals):
+            print("Key signals")
+            for symbol in vcd.keys():
+                heir = vcd[symbol]['nets'][0]['hier']
+                name = vcd[symbol]['nets'][0]['name']
+                print(heir + '.' + name)
+            print("\nModel Signals")
+            for signal in signals:
+                print(signal)
+            raise ValueError("Not all signals found")
 
 
     def _parse_vcd(self, file, only_sigs=0, siglist=None, opt_timescale=''):

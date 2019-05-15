@@ -24,7 +24,7 @@ class InputValidator(Validator):
         elif text[0] == "list":
             if len(text) != 1:
                 raise ValidationError(message="list doesn't take arguments!")
-        else:
+        elif text[0] != "time":
             raise ValidationError(message="Invalid Command!")
 
 
@@ -42,7 +42,7 @@ class Runtime():
         prompt_message = [
             ('class:arrow', '> '),
         ]
-        completer = WordCompleter(['step', 'info', 'list'])
+        completer = WordCompleter(['step', 'info', 'list', 'time'])
         self.prompt = (prompt_message, prompt_style, completer)
 
     def start(self):
@@ -76,3 +76,5 @@ class Runtime():
                 else:
                     num_steps = 1
                 sim_time = self.model.update(sim_time, num_steps)
+            elif text[0] == 'time':
+                print(sim_time)
