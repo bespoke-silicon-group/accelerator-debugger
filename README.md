@@ -39,7 +39,9 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
  each pane with the new information.
 
 ### TODO
-[ ] Clean up vcd_parser
+[ ] First run at panes
 
 ### Extra stretch
 [ ] Implement breakpoints
+[ ] Care about end time of simulation
+[ ] Reverse Execution

@@ -101,6 +101,7 @@ class Memory(HWModule):
         desc = self.get_name() + ": "
         for signal in self.get_signals():
             desc += f"\n\t{str(signal)}"
+        desc += "\n\nmem:\n"
         if self.size:
             desc += "\n" + self.print_mem_table(self.memory, columns=3)
         else:
