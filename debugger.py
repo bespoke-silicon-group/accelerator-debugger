@@ -15,9 +15,15 @@ def main():
     parser.add_argument("INPUT", type=str,
                         help="Input VCD file")
 
+    parser.add_argument('model', type=str,
+                        help="Model for HW")
+
     args = parser.parse_args()
 
-    model = ManycoreModel()
+    if args.model.lower() == 'test':
+        model = TestModel()
+    elif args.model.lower() == 'manycore':
+        model = ManycoreModel()
 
     vcd = VCDData(args.INPUT, siglist=model.get_signal_names())
     model.set_data(vcd)
