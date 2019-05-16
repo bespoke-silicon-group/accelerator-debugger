@@ -40,6 +40,10 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
 
 ### TODO
 [ ] First run at panes
+    [ ] Floating panel that shows text completion, positioned at cursor
+        position (or just copy code from prompt)
+    [ ] Panel for command output (from list/info/time)
+    [ ] Panel class that takes a HW module
 
 ### Extra stretch
 [ ] Implement breakpoints
