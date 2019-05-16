@@ -39,10 +39,8 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
  each pane with the new information.
 
 ### TODO
-[ ] First run at panes
-    [ ] Floating panel that shows text completion, positioned at cursor
-        position (or just copy code from prompt)
-    [ ] Panel class that takes a HW module
+[ ] Floating panel that shows text completion, positioned at cursor
+    position (or just copy code from prompt)
 
 ### Extra stretch
 [ ] Implement breakpoints

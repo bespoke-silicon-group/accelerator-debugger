@@ -2,12 +2,6 @@ import prompt_toolkit.layout.containers as pt_containers
 from prompt_toolkit.document import Document
 from prompt_toolkit.widgets import TextArea
 
-# Make a container class that wraps a Container and a HWModule
-#  1. Need to be able to get list of all HWModules contained & update text
-#  2. Need way of creating layout of views
-#
-#  Could just pass a list to init that the View appends to (bad)
-#
 
 class HSplit(pt_containers.HSplit):
     """Container class for Horizontal Splits that contains Views"""
@@ -64,7 +58,7 @@ class VSplit(pt_containers.VSplit):
 
 
 class View(TextArea):
-    # Try passing pointer to module, if it doesn't work just pass the name
+    """ Wraps a hardware module into a Container that can be displayed"""
     def __init__(self, module):
         self.module = module
         TextArea.__init__(self, text="")
@@ -82,10 +76,14 @@ class Display():
         self.top_view = self.gen_top_view(model)
 
     def gen_top_view(self, model):
+        """ Subclass implement this -- build the top-level view out of
+        HSplits, VSplits, and Views"""
         raise NotImplementedError
 
     def get_top_view(self):
+        """ Get the top level container"""
         return self.top_view
 
     def update(self):
+        """ Update all Views in the Display """
         self.get_top_view().update()

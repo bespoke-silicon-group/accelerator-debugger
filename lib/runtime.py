@@ -1,13 +1,15 @@
 #! /usr/bin/env python3
+""" The front end of the application:
+    * Parsing user input is done by the InputHandler
+    * Text completion is done by the ModuleCompleter
+    * Runtime initializes and runs the application
+    """
 
-from prompt_toolkit import PromptSession
-from prompt_toolkit.shortcuts import prompt
+
 from prompt_toolkit.styles import Style
 from prompt_toolkit.completion import Completer, Completion
-from prompt_toolkit.validation import Validator, ValidationError
 from prompt_toolkit.widgets import TextArea, SearchToolbar, Label
 from prompt_toolkit.layout.layout import Layout
-from prompt_toolkit.document import Document
 from prompt_toolkit.application import Application
 from prompt_toolkit.key_binding import KeyBindings
 import prompt_toolkit.layout.containers as pt_containers
@@ -17,11 +19,14 @@ COMMANDS = ['step', 'info', 'list', 'time']
 
 
 class ModuleCompleter(Completer):
+    """Text completion for user-input, including completion for module names"""
     def __init__(self, module_names):
         self.module_names = module_names
         self.meta_dict = {}
 
-    def get_completions(self, document, complete_event):
+    def get_completions(self, document, _):
+        """Given the document, yield a Completion based on what the user's
+        typed"""
         words = []
         text = document.text.strip()
         typed = document.text.strip().split()
@@ -37,13 +42,19 @@ class ModuleCompleter(Completer):
         def word_matches(word):
             return word.startswith(word_before_cursor)
 
-        for a in words:
-            if word_matches(a):
-                display_meta = self.meta_dict.get(a, '')
-                yield Completion(a, -len(word_before_cursor),
+        for word in words:
+            if word_matches(word):
+                display_meta = self.meta_dict.get(word, '')
+                yield Completion(word, -len(word_before_cursor),
                                  display_meta=display_meta)
 
+
+class InputException(Exception):
+    """Custom exception to throw when we find invalid user input"""
+
+
 class InputHandler():
+    """ Handle input from the user, throwing errors as necessary """
     def __init__(self, input_field, command_output, model, display):
         self.input_field = input_field
         self.command_output = command_output
@@ -51,46 +62,59 @@ class InputHandler():
         self.display = display
         self.sim_time = 0
 
-    def accept(self, buff):
+    def parse_step(self, text):
+        """ Handle the 'step' command """
+        if len(text) == 2:
+            num_steps = int(text[1])
+        else:
+            num_steps = 1
+        self.sim_time = self.model.update(self.sim_time, num_steps)
+        self.display.update()
+        return ""
+
+    def parse_info(self, text):
+        """ Handle the 'info' command """
+        modules = self.model.get_traced_modules()
+        if len(text) == 1:
+            raise InputException("info takes a module name")
+        req_module = [m for m in modules if m.get_name() == text[1]]
+        if not req_module:
+            raise InputException("Module not found!")
+        return f"{str(req_module[0])}\n"
+
+    def accept(self, _):
+        """ Handle user input """
         out_text = ""
         text = self.input_field.text.strip().split()
-        if len(text) == 0:
+        if not text:
             return
-        if text[0] == 'list':
-            for module in self.model.get_traced_modules():
-                out_text += f"* {module.get_name()}\n"
-        elif text[0] == 'info':
-            modules = self.model.get_traced_modules()
-            if len(text) == 1:
-                out_text += "ERROR: info takes a module name\n"
+        try:
+            if text[0] == 'list':
+                for module in self.model.get_traced_modules():
+                    out_text += f"* {module.get_name()}\n"
+            elif text[0] == 'info':
+                out_text = self.parse_info(text)
+            elif text[0] == 'step':
+                out_text = self.parse_step(text)
+            elif text[0] == 'time':
+                out_text += str(self.sim_time)
             else:
-                req_module = [m for m in modules if m.get_name() == text[1]]
-                if not req_module:
-                    out_text += "ERROR: Module not found!\n"
-                else:
-                    out_text += f"{str(req_module[0])}\n"
-        elif text[0] == 'step':
-            if len(text) == 2:
-                num_steps = int(text[1])
-            else:
-                num_steps = 1
-            self.sim_time = self.model.update(self.sim_time, num_steps)
-            self.display.update()
-        elif text[0] == 'time':
-            out_text += str(self.sim_time)
-        else:
-            out_text += "ERROR: Invalid Command!\n"
-        out_text = out_text.replace('\t', ' ' * 4)
+                raise InputException("Invalid Command!")
+        except InputException as exception:
+            out_text = f"ERROR: {str(exception)}"
 
         self.command_output.text = out_text
 
+
 class Runtime():
+    """ The front-end of the debugger -- initializes and launches the app"""
     def __init__(self, display, model):
         assert model is not None and display is not None
         self.model = model
         self.display = display
 
     def start(self):
+        """Start the debugger: initialize the display and run"""
         module_names = [m.get_name() for m in self.model.get_traced_modules()]
         search_field = SearchToolbar()
         input_field = TextArea(prompt='> ', style='class:arrow',
@@ -120,18 +144,18 @@ class Runtime():
             ('arrow', '#00aa00')
         ])
 
-        kb = KeyBindings()
+        bindings = KeyBindings()
 
-        @kb.add('c-c')
-        @kb.add('c-q')
-        @kb.add('c-d')
+        @bindings.add('c-c')
+        @bindings.add('c-q')
+        @bindings.add('c-d')
         def _(event):
             " Pressing Ctrl-Q or Ctrl-C will exit the user interface. "
             event.app.exit()
 
         application = Application(
             layout=Layout(container, focused_element=input_field),
-            key_bindings=kb,
+            key_bindings=bindings,
             style=style,
             mouse_support=True,
             full_screen=True)
