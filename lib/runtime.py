@@ -3,7 +3,7 @@
     * Parsing user input is done by the InputHandler
     * Text completion is done by the ModuleCompleter
     * Runtime initializes and runs the application
-    """
+"""
 
 
 from prompt_toolkit.styles import Style
@@ -12,6 +12,7 @@ from prompt_toolkit.widgets import TextArea, SearchToolbar, Label
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.application import Application
 from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.layout.menus import CompletionsMenu
 import prompt_toolkit.layout.containers as pt_containers
 
 
@@ -48,7 +49,6 @@ class ModuleCompleter(Completer):
                 yield Completion(word, -len(word_before_cursor),
                                  display_meta=display_meta)
 
-
 class InputException(Exception):
     """Custom exception to throw when we find invalid user input"""
 
@@ -82,12 +82,13 @@ class InputHandler():
             raise InputException("Module not found!")
         return f"{str(req_module[0])}\n"
 
-    def parse_help(self, text):
-        help = "HELP:\n    step <n>: Step the simulation\n"
-        help += "    info <module_name>: Print the status of a given module\n"
-        help += "    time: Print the current simulation time\n"
-        help += "    help: Print this text\n"
-        return help
+    @staticmethod
+    def help_text():
+        htext = "HELP:\n    step <n>: Step the simulation\n"
+        htext += "    info <module_name>: Print the status of a given module\n"
+        htext += "    time: Print the current simulation time\n"
+        htext += "    help: Print this text\n"
+        return htext
 
     def get_time_str(self):
         return str(self.sim_time)
@@ -103,7 +104,7 @@ class InputHandler():
                 for module in self.model.get_traced_modules():
                     out_text += f"* {module.get_name()}\n"
             elif text[0] == 'help':
-                out_text = self.parse_help(text)
+                out_text = self.help_text()
             elif text[0] == 'info':
                 out_text = self.parse_info(text)
             elif text[0] == 'step':
@@ -151,6 +152,14 @@ class Runtime():
             search_field
         ])
 
+        completion_menu = CompletionsMenu(max_height=5, scroll_offset=1)
+        body = pt_containers.FloatContainer(
+            content=container,
+            floats=[
+                pt_containers.Float(xcursor=True,
+                                    ycursor=True,
+                                    content=completion_menu)])
+
 
         input_field.accept_handler = handler.accept
 
@@ -168,7 +177,7 @@ class Runtime():
             event.app.exit()
 
         application = Application(
-            layout=Layout(container, focused_element=input_field),
+            layout=Layout(body, focused_element=input_field),
             key_bindings=bindings,
             style=style,
             mouse_support=True,

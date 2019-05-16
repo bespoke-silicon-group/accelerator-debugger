@@ -47,6 +47,4 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
 [ ] Reverse Execution
     [ ] rstep (default 1, takes n)
     [ ] go <time> (go to specified time)
-[ ] Floating panel that shows text completion, positioned at cursor
-    position (or just copy code from prompt)
 [ ] Always show simulation time to right of command bar (as rprompt)
