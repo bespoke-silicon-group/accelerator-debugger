@@ -6,7 +6,7 @@ from prompt_toolkit.styles import Style
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.validation import Validator, ValidationError
 from prompt_toolkit.layout.containers import HSplit, Window
-from prompt_toolkit.widgets import TextArea
+from prompt_toolkit.widgets import TextArea, SearchToolbar
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.document import Document
 from prompt_toolkit.application import Application
@@ -40,13 +40,14 @@ class ModuleCompleter(Completer):
 
     def get_completions(self, document, complete_event):
         words = []
-        typed_words = str(document).strip().split()
-        num_words = len(typed_words)
-        words = []
-        if num_words > 2 and document.find_backwards('info'):
+        text = document.text.strip()
+        typed = document.text.strip().split()
+        num_words = len(typed)
+        words = COMMANDS
+        if (num_words > 1 and typed[0] == 'info') or (text == 'info'):
             words = self.module_names
-        elif num_words == 2:
-            words = COMMANDS
+        elif num_words == 1 and typed[0] in COMMANDS:
+            words = []
 
         word_before_cursor = document.get_word_before_cursor(WORD=False)
 
@@ -60,9 +61,10 @@ class ModuleCompleter(Completer):
                                  display_meta=display_meta)
 
 class InputHandler():
-    def __init__(self, input_field, output_field):
+    def __init__(self, input_field, output_field, model):
         self.input_field = input_field
         self.output_field = output_field
+        self.model = model
         self.sim_time = 0
 
     def accept(self, buff):
@@ -87,34 +89,35 @@ class InputHandler():
         elif text[0] == 'time':
             out_text += str(self.sim_time)
 
-        self.output_field.buffer.document = Document(text=out_text,
-                                                     cursor_position=len(out_text))
+        out_doc = Document(text=out_text, cursor_position=len(out_text))
+        self.output_field.buffer.document = out_doc
 
 class Runtime():
     def __init__(self, display, model):
         if display is not None:
             raise NotImplementedError("Displays aren't supported yet!")
         self.model = model
-        self.prompt = None
-
-    def create_prompt(self, module_names):
-        prompt_message = [
-            ('class:arrow', '> '),
-        ]
-                                      # validate_while_typing=False,
-                                      # validator=InputValidator())
-        return TextArea(prompt='> ', style='class:arrow',
-                        completer=ModuleCompleter(module_names))
 
     def start(self):
         module_names = [m.get_name() for m in self.model.get_traced_modules()]
-        input_field = self.create_prompt(module_names)
-        output_field = TextArea(text="asdf")
+        search_field = SearchToolbar()
+        input_field = TextArea(prompt='> ', style='class:arrow',
+                               completer=ModuleCompleter(module_names),
+                               search_field=search_field,
+                               multiline=False)
+
+        output_field = TextArea(text="")
         container = HSplit([
             output_field,
             Window(height=1, char='-'),
-            input_field
+            input_field,
+            search_field
         ])
+
+        handler = InputHandler(input_field, output_field, self.model)
+
+        input_field.accept_handler = handler.accept
+
         style = Style([
             ('arrow', '#00aa00')
         ])
@@ -123,17 +126,15 @@ class Runtime():
 
         @kb.add('c-c')
         @kb.add('c-q')
+        @kb.add('c-d')
         def _(event):
             " Pressing Ctrl-Q or Ctrl-C will exit the user interface. "
             event.app.exit()
 
-        handler = InputHandler(input_field, output_field)
-
-        input_field.accept_handler = handler.accept
         application = Application(
             layout=Layout(container, focused_element=input_field),
-            mouse_support=True,
             key_bindings=kb,
             style=style,
+            mouse_support=True,
             full_screen=True)
         application.run()
