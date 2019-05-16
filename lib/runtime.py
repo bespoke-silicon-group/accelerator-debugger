@@ -5,32 +5,15 @@ from prompt_toolkit.shortcuts import prompt
 from prompt_toolkit.styles import Style
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.validation import Validator, ValidationError
-from prompt_toolkit.layout.containers import HSplit, Window
 from prompt_toolkit.widgets import TextArea, SearchToolbar, Label
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.document import Document
 from prompt_toolkit.application import Application
 from prompt_toolkit.key_binding import KeyBindings
+import prompt_toolkit.layout.containers as pt_containers
+
 
 COMMANDS = ['step', 'info', 'list', 'time']
-
-class InputValidator(Validator):
-    def validate(self, document):
-        text = document.text.strip().split()
-        if not text:
-            return
-
-        if text[0] not in COMMANDS:
-            raise ValidationError(message="Invalid Command!")
-
-        # step <digit>
-        if text[0] == 'step':
-            if len(text) == 2 and not text[1].isdigit():
-                raise ValidationError(message="Step takes a number of steps!")
-        # info <modulename>
-        elif text[0] == "info":
-            if len(text) != 2:
-                raise ValidationError(message="info takes a module name!")
 
 
 class ModuleCompleter(Completer):
@@ -109,9 +92,9 @@ class Runtime():
 
         output_field = TextArea(text="")
         command_output = Label(text="")
-        container = HSplit([
+        container = pt_containers.HSplit([
             output_field,
-            Window(height=1, char='-'),
+            pt_containers.Window(height=1, char='-'),
             command_output,
             input_field,
             search_field
