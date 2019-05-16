@@ -54,16 +54,21 @@ class InputHandler():
     def accept(self, buff):
         out_text = ""
         text = self.input_field.text.strip().split()
+        if len(text) == 0:
+            return
         if text[0] == 'list':
             for module in self.model.get_traced_modules():
-                out_text += f"{module.get_name()}\n"
+                out_text += f"* {module.get_name()}\n"
         elif text[0] == 'info':
             modules = self.model.get_traced_modules()
-            req_module = [m for m in modules if m.get_name() == text[1]]
-            if not req_module:
-                out_text += "ERROR: Module not found!\n"
+            if len(text) == 1:
+                out_text += "ERROR: info takes a module name\n"
             else:
-                out_text += f"{str(req_module[0])}\n"
+                req_module = [m for m in modules if m.get_name() == text[1]]
+                if not req_module:
+                    out_text += "ERROR: Module not found!\n"
+                else:
+                    out_text += f"{str(req_module[0])}\n"
         elif text[0] == 'step':
             if len(text) == 2:
                 num_steps = int(text[1])
@@ -73,6 +78,8 @@ class InputHandler():
             self.display.update()
         elif text[0] == 'time':
             out_text += str(self.sim_time)
+        else:
+            out_text += "ERROR: Invalid Command!\n"
         out_text = out_text.replace('\t', ' ' * 4)
 
         self.command_output.text = out_text

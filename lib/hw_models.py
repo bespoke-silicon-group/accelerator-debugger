@@ -59,7 +59,7 @@ class BasicModule(HWModule):
     def __str__(self):
         desc = self.get_name() + ": "
         for signal in self.get_signals():
-            desc += f"\n\t{str(signal)}"
+            desc += f"\n    {str(signal)}"
         return desc
 
     def update_signals(self, curr_time, steps, step_time):
@@ -93,20 +93,20 @@ class Memory(HWModule):
             for col in range(columns):
                 pos = (x * columns) + col
                 num = seq[x + (col_height * col)]
-                table += f"({pos}) {bin_to_hex(num)}".ljust(16)
+                table += f"  ({pos}) {bin_to_hex(num)}".ljust(16)
             table += '\n'
         return table
 
     def __str__(self):
         desc = self.get_name() + ": "
         for signal in self.get_signals():
-            desc += f"\n\t{str(signal)}"
-        desc += "\n\nmem:\n"
+            desc += f"\n    {str(signal)}"
+        desc += "\nmem:\n"
         if self.size:
-            desc += "\n" + self.print_mem_table(self.memory, columns=3)
+            desc += self.print_mem_table(self.memory, columns=3) + "\n"
         else:
             for addr, value in enumerate(self.memory):
-                desc += f"\n\t\t{addr}: {bin_to_hex(value)}"
+                desc += f"    {addr}: {bin_to_hex(value)}\n"
         return desc
 
     def write_if_en(self):
