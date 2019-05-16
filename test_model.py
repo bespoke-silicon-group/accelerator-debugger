@@ -2,6 +2,7 @@
 """Module to be used for testing with ex.vcd"""
 
 from lib.hw_models import HWModel, BasicModule, Memory
+from lib.view import *
 
 
 class TestModel(HWModel):
@@ -17,3 +18,8 @@ class TestModel(HWModel):
 
     def get_step_time(self):
         return 100
+
+class TestView(Display):
+    def gen_top_view(self, model):
+        return HSplit(View(model.get_module('mem')),
+                      View(model.get_module('r0_data')))

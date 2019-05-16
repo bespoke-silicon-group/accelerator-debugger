@@ -44,10 +44,11 @@ class ModuleCompleter(Completer):
                                  display_meta=display_meta)
 
 class InputHandler():
-    def __init__(self, input_field, command_output, model):
+    def __init__(self, input_field, command_output, model, display):
         self.input_field = input_field
         self.command_output = command_output
         self.model = model
+        self.display = display
         self.sim_time = 0
 
     def accept(self, buff):
@@ -69,6 +70,7 @@ class InputHandler():
             else:
                 num_steps = 1
             self.sim_time = self.model.update(self.sim_time, num_steps)
+            self.display.update()
         elif text[0] == 'time':
             out_text += str(self.sim_time)
         out_text = out_text.replace('\t', ' ' * 4)
@@ -77,9 +79,9 @@ class InputHandler():
 
 class Runtime():
     def __init__(self, display, model):
-        if display is not None:
-            raise NotImplementedError("Displays aren't supported yet!")
+        assert model is not None and display is not None
         self.model = model
+        self.display = display
 
     def start(self):
         module_names = [m.get_name() for m in self.model.get_traced_modules()]
@@ -90,17 +92,20 @@ class Runtime():
                                height=1,
                                multiline=False, wrap_lines=True)
 
-        output_field = TextArea(text="")
+        # output_field = TextArea(text="")
         command_output = Label(text="")
+        self.display.update()
         container = pt_containers.HSplit([
-            output_field,
+            self.display.get_top_view(),
+            # output_field,
             pt_containers.Window(height=1, char='-'),
             command_output,
             input_field,
             search_field
         ])
 
-        handler = InputHandler(input_field, command_output, self.model)
+        handler = InputHandler(input_field, command_output,
+                               self.model, self.display)
 
         input_field.accept_handler = handler.accept
 

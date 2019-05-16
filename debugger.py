@@ -5,8 +5,8 @@
 import argparse
 from lib.vcd_parser import VCDData
 from lib.runtime import Runtime
-from test_model import TestModel
-from manycore_model import ManycoreModel
+from test_model import TestModel, TestView
+from manycore_model import ManycoreModel, ManycoreView
 
 
 def main():
@@ -22,13 +22,15 @@ def main():
 
     if args.MODEL.lower() == 'test':
         model = TestModel()
+        display = TestView(model)
     elif args.MODEL.lower() == 'manycore':
         model = ManycoreModel()
+        display = ManycoreView(model)
 
     vcd = VCDData(args.INPUT, siglist=model.get_signal_names())
     model.set_data(vcd)
 
-    runtime = Runtime(None, model)
+    runtime = Runtime(display, model)
     runtime.start()
 
 

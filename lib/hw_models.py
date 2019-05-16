@@ -154,6 +154,13 @@ class HWModel(metaclass=abc.ABCMeta):
     def get_step_time(self):
         raise NotImplementedError
 
+    def get_module(self, name):
+        modules = self.get_traced_modules()
+        req_module = [m for m in modules if m.get_name() == name]
+        if not req_module:
+            return None
+        return req_module[0]
+
     def update(self, curr_time, steps):
         step_time = self.get_step_time()
         for module in self.get_traced_modules():

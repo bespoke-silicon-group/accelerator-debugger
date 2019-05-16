@@ -11,50 +11,61 @@ from prompt_toolkit.widgets import TextArea
 
 class HSplit(pt_containers.HSplit):
     """Container class for Horizontal Splits that contains Views"""
-    def __init__(self, top_child, bottom_child):
-        self.subviews = [
-            top_child,
+    def __init__(self, top, bottom):
+        children = [
+            top,
             pt_containers.Window(height=1, char='-'),
-            bottom_child
+            bottom
         ]
-        self.children = [top_child, bottom_child]
-        super(HSplit, self).__init__(self.subviews)
+        self.subviews = [top, bottom]
+        pt_containers.HSplit.__init__(self, children)
 
     def update(self):
         """Update all the subviews for this container"""
-        for child in self.children:
-            child.update()
+        for subview in self.subviews:
+            subview.update()
 
 
 class VSplit(pt_containers.VSplit):
     """Container class for Vertical Splits that contains Views"""
-    def __init__(self, left_child, right_child):
-        self.subviews = [
-            left_child,
+    def __init__(self, left, right):
+        subviews = [
+            left,
             pt_containers.Window(width=1, char='|'),
-            right_child
+            right
         ]
-        self.children = [left_child, right_child]
-        super(VSplit, self).__init__(self.subviews)
+        self.subviews = [left, right]
+        pt_containers.VSplit.__init__(self, subviews)
 
     def update(self):
         """Update all the subviews for this container"""
-        for child in self.children:
-            child.update()
+        for subview in self.subviews:
+            subview.update()
 
 
 class View(TextArea):
     # Try passing pointer to module, if it doesn't work just pass the name
     def __init__(self, module):
         self.module = module
-        super(View, self).__init__(text="")
+        TextArea.__init__(self, text="")
+
 
     def update(self):
         """Update this view and all subviews"""
         new_text = str(self.module)
-        super(View, self).buffer.document = Document(text=new_text)
+        self.buffer.document = Document(text=new_text)
 
 
 class Display():
     """ Abstract class for debugging displays to implement"""
-    pass
+    def __init__(self, model):
+        self.top_view = self.gen_top_view(model)
+
+    def gen_top_view(self, model):
+        raise NotImplementedError
+
+    def get_top_view(self):
+        return self.top_view
+
+    def update(self):
+        self.get_top_view().update()
