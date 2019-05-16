@@ -15,7 +15,7 @@ from prompt_toolkit.key_binding import KeyBindings
 import prompt_toolkit.layout.containers as pt_containers
 
 
-COMMANDS = ['step', 'info', 'list', 'time']
+COMMANDS = ['step', 'info', 'list', 'time', 'help']
 
 
 class ModuleCompleter(Completer):
@@ -82,6 +82,16 @@ class InputHandler():
             raise InputException("Module not found!")
         return f"{str(req_module[0])}\n"
 
+    def parse_help(self, text):
+        help = "HELP:\n    step <n>: Step the simulation\n"
+        help += "    info <module_name>: Print the status of a given module\n"
+        help += "    time: Print the current simulation time\n"
+        help += "    help: Print this text\n"
+        return help
+
+    def get_time_str(self):
+        return str(self.sim_time)
+
     def accept(self, _):
         """ Handle user input """
         out_text = ""
@@ -92,6 +102,8 @@ class InputHandler():
             if text[0] == 'list':
                 for module in self.model.get_traced_modules():
                     out_text += f"* {module.get_name()}\n"
+            elif text[0] == 'help':
+                out_text = self.parse_help(text)
             elif text[0] == 'info':
                 out_text = self.parse_info(text)
             elif text[0] == 'step':
@@ -126,6 +138,10 @@ class Runtime():
         # output_field = TextArea(text="")
         command_output = Label(text="")
         self.display.update()
+        handler = InputHandler(input_field, command_output,
+                               self.model, self.display)
+
+
         container = pt_containers.HSplit([
             self.display.get_top_view(),
             # output_field,
@@ -135,8 +151,6 @@ class Runtime():
             search_field
         ])
 
-        handler = InputHandler(input_field, command_output,
-                               self.model, self.display)
 
         input_field.accept_handler = handler.accept
 
