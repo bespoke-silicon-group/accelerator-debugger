@@ -6,7 +6,7 @@ from prompt_toolkit.styles import Style
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.validation import Validator, ValidationError
 from prompt_toolkit.layout.containers import HSplit, Window
-from prompt_toolkit.widgets import TextArea, SearchToolbar
+from prompt_toolkit.widgets import TextArea, SearchToolbar, Label
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.document import Document
 from prompt_toolkit.application import Application
@@ -61,9 +61,9 @@ class ModuleCompleter(Completer):
                                  display_meta=display_meta)
 
 class InputHandler():
-    def __init__(self, input_field, output_field, model):
+    def __init__(self, input_field, command_output, model):
         self.input_field = input_field
-        self.output_field = output_field
+        self.command_output = command_output
         self.model = model
         self.sim_time = 0
 
@@ -88,9 +88,9 @@ class InputHandler():
             self.sim_time = self.model.update(self.sim_time, num_steps)
         elif text[0] == 'time':
             out_text += str(self.sim_time)
+        out_text = out_text.replace('\t', ' ' * 4)
 
-        out_doc = Document(text=out_text, cursor_position=len(out_text))
-        self.output_field.buffer.document = out_doc
+        self.command_output.text = out_text
 
 class Runtime():
     def __init__(self, display, model):
@@ -104,17 +104,20 @@ class Runtime():
         input_field = TextArea(prompt='> ', style='class:arrow',
                                completer=ModuleCompleter(module_names),
                                search_field=search_field,
-                               multiline=False)
+                               height=1,
+                               multiline=False, wrap_lines=True)
 
         output_field = TextArea(text="")
+        command_output = Label(text="")
         container = HSplit([
             output_field,
             Window(height=1, char='-'),
+            command_output,
             input_field,
             search_field
         ])
 
-        handler = InputHandler(input_field, output_field, self.model)
+        handler = InputHandler(input_field, command_output, self.model)
 
         input_field.accept_handler = handler.accept
 
