@@ -34,6 +34,7 @@ class ManycoreView(Display):
             for j in range(2):
                 regs.append(model.get_module(f"rf_{i}_{j}"))
 
-        regs = HSplit(VSplit(regs[0], regs[1]), VSplit(regs[2], regs[3]))
+        regs = HSplit(VSplit(View(regs[0]), View(regs[1])),
+                      VSplit(View(regs[2]), View(regs[3])))
         return regs
 

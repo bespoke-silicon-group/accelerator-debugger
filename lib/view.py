@@ -12,6 +12,16 @@ from prompt_toolkit.widgets import TextArea
 class HSplit(pt_containers.HSplit):
     """Container class for Horizontal Splits that contains Views"""
     def __init__(self, top, bottom):
+        valid = [False, False]
+        for valid_type in [View, HSplit, VSplit]:
+            if isinstance(top, valid_type):
+                valid[0] = True
+            if isinstance(bottom, valid_type):
+                valid[1] = True
+        if not valid[0] or not valid[1]:
+            raise RuntimeError("HSplit subviews aren't Views "
+                               "(did you forget to create a View() around "
+                               "the module?)")
         children = [
             top,
             pt_containers.Window(height=1, char='-'),
@@ -29,6 +39,16 @@ class HSplit(pt_containers.HSplit):
 class VSplit(pt_containers.VSplit):
     """Container class for Vertical Splits that contains Views"""
     def __init__(self, left, right):
+        valid = [False, False]
+        for valid_type in [View, HSplit, VSplit]:
+            if isinstance(left, valid_type):
+                valid[0] = True
+            if isinstance(right, valid_type):
+                valid[1] = True
+        if not valid[0] or not valid[1]:
+            raise RuntimeError("VSplit subviews aren't Views "
+                               "(did you forget to create a View() around "
+                               "the module?)")
         subviews = [
             left,
             pt_containers.Window(width=1, char='|'),
