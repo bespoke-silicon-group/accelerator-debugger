@@ -5,10 +5,9 @@ import abc
 def bin_to_hex(bin_num):
     if 'x' in bin_num or 'X' in bin_num:
         return f"{len(bin_num)}'h" + ((len(bin_num)) // 4 * 'x')
-    elif 'z' in bin_num or 'Z' in bin_num:
+    if 'z' in bin_num or 'Z' in bin_num:
         return f"{len(bin_num)}'h" + ((len(bin_num)) // 4 * 'z')
-    else:
-        return hex(int(bin_num, 2))
+    return hex(int(bin_num, 2))
 
 class Signal():
     """Signals are compsed of the VCD symbol that represents the signal,
@@ -26,6 +25,12 @@ class Signal():
 
 class HWModule(metaclass=abc.ABCMeta):
     """ Signals are tuples of (global_symbol, name_in_module, value) """
+    def __init__(self, module_name, signal_names):
+        self.signal_names = signal_names
+        self.name = module_name
+        self.signals = []
+        self.data = None
+
     def get_signal_names(self):
         return self.signal_names
 
@@ -45,21 +50,15 @@ class HWModule(metaclass=abc.ABCMeta):
     def __str__(self):
         raise NotImplementedError
 
-    def update_signals(self, time):
+    def update_signals(self, curr_time, steps, step_time):
         raise NotImplementedError
 
 
 class BasicModule(HWModule):
-    def __init__(self, module_name, signal_names):
-        self.signal_names = signal_names
-        self.signals = []
-        self.name = module_name
-        self.data = None
-
     def __str__(self):
         desc = self.get_name() + ": "
         for signal in self.get_signals():
-            desc += f"\n\t{str(signal)}"
+            desc += f"\n    {str(signal)}"
         return desc
 
     def update_signals(self, curr_time, steps, step_time):
@@ -73,9 +72,7 @@ class Memory(HWModule):
     If a size is given, we allocated a memory of the given size,
     otherwise memory locations are allocated lazily when writes occur"""
     def __init__(self, module_name, addr, wdata, enable, enable_level, size=0):
-        self.signal_names = [addr, wdata, enable]
-        self.name = module_name
-        self.signals = []
+        HWModule.__init__(self, module_name, [addr, wdata, enable])
         self.size = size
         # If the user gave a size, we should allocate memory
         if self.size:
@@ -83,30 +80,30 @@ class Memory(HWModule):
         else:
             self.memory = {}
         self.enable_level = enable_level
-        self.data = None
+
 
     @staticmethod
     def print_mem_table(seq, columns=2):
         table = ''
         col_height = len(seq) // columns
-        for x in range(col_height):
+        for row in range(col_height):
             for col in range(columns):
-                pos = (x * columns) + col
-                num = seq[x + (col_height * col)]
-                table += f"({pos}) {bin_to_hex(num)}".ljust(16)
+                pos = (row * columns) + col
+                num = seq[row + (col_height * col)]
+                table += f"  ({pos}) {bin_to_hex(num)}".ljust(16)
             table += '\n'
         return table
 
     def __str__(self):
         desc = self.get_name() + ": "
         for signal in self.get_signals():
-            desc += f"\n\t{str(signal)}"
-        desc += "\n\nmem:\n"
+            desc += f"\n    {str(signal)}"
+        desc += "\nmem:\n"
         if self.size:
-            desc += "\n" + self.print_mem_table(self.memory, columns=3)
+            desc += self.print_mem_table(self.memory, columns=3) + "\n"
         else:
             for addr, value in enumerate(self.memory):
-                desc += f"\n\t\t{addr}: {bin_to_hex(value)}"
+                desc += f"    {addr}: {bin_to_hex(value)}\n"
         return desc
 
     def write_if_en(self):
@@ -134,6 +131,9 @@ class Memory(HWModule):
 
 
 class HWModel(metaclass=abc.ABCMeta):
+    def __init__(self):
+        self.data = None
+
     def get_traced_signals(self):
         signals = []
         for module in self.get_traced_modules():
@@ -153,6 +153,13 @@ class HWModel(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def get_step_time(self):
         raise NotImplementedError
+
+    def get_module(self, name):
+        modules = self.get_traced_modules()
+        req_module = [m for m in modules if m.get_name() == name]
+        if not req_module:
+            return None
+        return req_module[0]
 
     def update(self, curr_time, steps):
         step_time = self.get_step_time()

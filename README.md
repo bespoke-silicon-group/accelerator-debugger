@@ -39,9 +39,12 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
  each pane with the new information.
 
 ### TODO
-[ ] First run at panes
-
-### Extra stretch
-[ ] Implement breakpoints
 [ ] Care about end time of simulation
+[ ] Implement breakpoints
+    [ ] Breakpoint on "arbitrary boolean expression" (assign number)
+    [ ] list breakpoints command (prints number, expression)
+    [ ] Remove breakpoint command (takes number)
 [ ] Reverse Execution
+    [ ] rstep (default 1, takes n)
+    [ ] go <time> (go to specified time)
+[ ] Always show simulation time to right of command bar (as rprompt)

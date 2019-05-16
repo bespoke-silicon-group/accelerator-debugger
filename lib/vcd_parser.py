@@ -43,7 +43,7 @@ class VCDData():
         vcd = self._parse_vcd(file, siglist=signals, only_sigs=1)
         if len(vcd.keys()) != len(signals):
             print("Key signals")
-            for symbol in vcd.keys():
+            for symbol in vcd:
                 heir = vcd[symbol]['nets'][0]['hier']
                 name = vcd[symbol]['nets'][0]['name']
                 print(heir + '.' + name)
@@ -51,7 +51,6 @@ class VCDData():
             for signal in signals:
                 print(signal)
             raise ValueError("Not all signals found")
-
 
     def _parse_vcd(self, file, only_sigs=0, siglist=None, opt_timescale=''):
         """Parse input VCD file into data structure.
@@ -159,9 +158,7 @@ class VCDData():
                         if var_struct not in data[code]['nets']:
                             data[code]['nets'].append(var_struct)
 
-
         file_handle.close()
-
         return data
 
     def _calc_mult(self, statement, opt_timescale=''):
@@ -232,9 +229,21 @@ class VCDData():
         return (mult * scale) / new_scale
 
     def get_timescale(self):
+        """
+        This returns a string corresponding to the timescale as specified
+        by the C<$timescale> VCD keyword.  It returns the timescale for
+        the last VCD file parsed.  If called before a file is parsed, it
+        returns an undefined value.  If the C<parse_vcd> C<timescale> option
+        was used to specify a timescale, the specified value will be returned
+        instead of what is in the VCD file.
+        """
         return self.timescale
 
     def get_endtime(self):
+        """ This returns the last time found in the VCD file, scaled
+        appropriately.  It returns the last time for the last VCD file parsed.
+        If called before a file is parsed, it returns an undefined value.
+        """
         return self.endtime
 
 
@@ -362,27 +371,6 @@ class VCDData():
 #
 #     top.chip.cpu.alu.status
 #     top.chip.cpu.alu.sum[15:0]
-#
-# =head2 get_timescale( )
-#
-# This returns a string corresponding to the timescale as specified
-# by the C<$timescale> VCD keyword.  It returns the timescale for
-# the last VCD file parsed.  If called before a file is parsed, it
-# returns an undefined value.  If the C<parse_vcd> C<timescale> option
-# was used to specify a timescale, the specified value will be returned
-# instead of what is in the VCD file.
-#
-#     vcd = parse_vcd(file); # Parse a file first
-#     ts  = get_timescale();  # Then query the timescale
-#
-# =head2 get_endtime( )
-#
-# This returns the last time found in the VCD file, scaled
-# appropriately.  It returns the last time for the last VCD file parsed.
-# If called before a file is parsed, it returns an undefined value.
-#
-#     vcd = parse_vcd(file); # Parse a file first
-#     et  = get_endtime();    # Then query the endtime
 #
 # =head1 LIMITATIONS
 #
