@@ -42,8 +42,11 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
 [ ] Care about end time of simulation
 [ ] Implement breakpoints
     [ ] Breakpoint on "arbitrary boolean expression" (assign number)
+        [ ] "Arbitrary boolean expression"; could eval(), maybe something
+            faster?
     [ ] list breakpoints command (prints number, expression)
     [ ] Remove breakpoint command (takes number)
+    [ ] run <time> (run execution forward until <time>)
 [ ] Reverse Execution
     [ ] rstep (default 1, takes n)
     [ ] go <time> (go to specified time)
