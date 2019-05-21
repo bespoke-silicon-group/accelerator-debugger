@@ -38,8 +38,20 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
  steps all the module contained within it. Then, we can update
  each pane with the new information.
 
+### Implementing Breakpoints
+`break <condition>` where the condition is a blend of variables and operators
+* Could implement with eval(), but language of condition needs to be python
+    * This is an easy fix with a couple find-replaces
+    * Can be sped up with `compiler.compile()`
+* Alternatively, programmer uses variable names and constructs to build
+    expressions
+    * This is basically building the AST by hand, which is more secure than
+        using pure eval, but more work
+* Minor issue is getting vars from module into scope
+
 ### TODO
 [ ] Care about end time of simulation
+[ ] `clear` command to clear output from last command
 [ ] Implement breakpoints
     [ ] Breakpoint on "arbitrary boolean expression" (assign number)
         [ ] "Arbitrary boolean expression"; could eval(), maybe something
@@ -51,3 +63,12 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
     [ ] rstep (default 1, takes n)
     [ ] go <time> (go to specified time)
 [ ] Always show simulation time to right of command bar (as rprompt)
+[ ] When instantiating module, SW dev can decide what signals to include
+   (by default, includes all)
+[ ] Display information as densely as possible (Micheal, Mark disagrees)
+
+### Stretch
+[ ] We could write the cached database created from VPD into a file; loader
+    checks if JSON or VPD format and either runs `parse_vpd()` or just loads.
+    Add a command line --regen option to force running `parse_vpd()`
+[ ] Hook into ELF file stubs (there's a GNU library for this)

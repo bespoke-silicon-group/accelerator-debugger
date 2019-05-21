@@ -15,8 +15,7 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout.menus import CompletionsMenu
 import prompt_toolkit.layout.containers as pt_containers
 
-
-COMMANDS = ['step', 'info', 'list', 'time', 'help']
+COMMANDS = ['step', 'info', 'list', 'time', 'help', 'breakpoint']
 
 
 class ModuleCompleter(Completer):
@@ -82,6 +81,23 @@ class InputHandler():
             raise InputException("Module not found!")
         return f"{str(req_module[0])}\n"
 
+    def parse_breakpoint(self, text):
+        if len(text) <= 1:
+            raise InputException("Breakpoint takes a condition")
+        condition = " ".join(text[1:])
+        print(condition)
+        print(text)
+        # Convert commonly used C expressions to python, != is hard though
+        condition = condition.replace('&&', 'and')
+        condition = condition.replace('||', 'or')
+        condition = condition.replace('!', 'not')
+        modules = self.model.get_traced_modules()
+        namespace = {}
+        for module in self.model.get_traced_modules():
+            namespace[module.get_name()] = module.get_signal_dict()
+        print(namespace)
+        return eval(condition, {}, namespace)
+
     @staticmethod
     def help_text():
         htext = "HELP:\n    step <n>: Step the simulation\n"
@@ -107,10 +123,12 @@ class InputHandler():
                 out_text = self.help_text()
             elif text[0] == 'info':
                 out_text = self.parse_info(text)
-            elif text[0] == 'step':
+            elif text[0] == 'step' or text[0] == 's':
                 out_text = self.parse_step(text)
             elif text[0] == 'time':
-                out_text += str(self.sim_time)
+                out_text = str(self.sim_time)
+            elif text[0] == 'breakpoint' or text[0] == 'bkpt':
+                out_text = self.parse_breakpoint(text)
             else:
                 raise InputException("Invalid Command!")
         except InputException as exception:
@@ -142,6 +160,7 @@ class Runtime():
         handler = InputHandler(input_field, command_output,
                                self.model, self.display)
 
+        print(handler.parse_breakpoint("breakpoint r0_data.data_valid == 0".split()))
 
         container = pt_containers.HSplit([
             self.display.get_top_view(),

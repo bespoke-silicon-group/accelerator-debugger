@@ -2,6 +2,11 @@
 
 import abc
 
+class AttrDict(dict):
+    def __init__(self, *args, **kwargs):
+        super(AttrDict, self).__init__(*args, **kwargs)
+        self.__dict__ = self
+
 def bin_to_hex(bin_num):
     if 'x' in bin_num or 'X' in bin_num:
         return f"{len(bin_num)}'h" + ((len(bin_num)) // 4 * 'x')
@@ -37,6 +42,9 @@ class HWModule(metaclass=abc.ABCMeta):
     def get_signals(self):
         return self.signals
 
+    def get_signal_dict(self):
+        raise NotImplementedError
+
     def get_name(self):
         return self.name
 
@@ -61,6 +69,13 @@ class BasicModule(HWModule):
             desc += f"\n    {str(signal)}"
         return desc
 
+    def get_signal_dict(self):
+        d = {}
+        for signal in self.get_signals():
+            short_name = signal.name.split('.')[-1]
+            d[short_name] = signal.value
+        return AttrDict(d)
+
     def update_signals(self, curr_time, steps, step_time):
         new_time = curr_time + steps * step_time
         for signal in self.get_signals():
@@ -81,6 +96,13 @@ class Memory(HWModule):
             self.memory = {}
         self.enable_level = enable_level
 
+    def get_signal_dict(self):
+        d = {}
+        for signal in self.get_signals():
+            short_name = signal.name.split('.')[-1]
+            d[short_name] = signal.value
+        d['mem'] = self.memory
+        return AttrDict(d)
 
     @staticmethod
     def print_mem_table(seq, columns=2):
