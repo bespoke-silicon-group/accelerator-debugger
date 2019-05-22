@@ -15,7 +15,8 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout.menus import CompletionsMenu
 import prompt_toolkit.layout.containers as pt_containers
 
-COMMANDS = ['step', 'info', 'list', 'time', 'help', 'breakpoint']
+COMMANDS = ['step', 'info', 'list', 'time', 'help', 'breakpoint', 'lsbrk',
+            'delete']
 
 
 class ModuleCompleter(Completer):
@@ -60,6 +61,11 @@ class InputHandler():
         self.model = model
         self.display = display
         self.sim_time = 0
+        self.bkpt_namespace = {}
+        for module in self.model.get_traced_modules():
+            self.bkpt_namespace[module.get_name()] = module.get_signal_dict()
+        self.breakpoints = []
+        self.next_bkpt_num = 0
 
     def parse_step(self, text):
         """ Handle the 'step' command """
@@ -90,10 +96,27 @@ class InputHandler():
         condition = condition.replace('||', 'or')
         condition = condition.replace('!', 'not')
         modules = self.model.get_traced_modules()
-        namespace = {}
-        for module in self.model.get_traced_modules():
-            namespace[module.get_name()] = module.get_signal_dict()
-        return str(eval(condition, {}, namespace))
+        current_cond = str(eval(condition, {}, self.bkpt_namespace))
+        bkpt_num = self.next_bkpt_num
+        self.next_bkpt_num += 1
+        self.breakpoints.append((bkpt_num, condition))
+        return f"Breakpoint {bkpt_num}: {condition}"
+
+    def lsbrk(self, text):
+        out_text = ""
+        for bkpt_num, condition in self.breakpoints:
+            out_text += f"Breakpoint {bkpt_num}: {condition}\n"
+        return out_text[:-1]  # Strip final newline
+
+    def delete(self, text):
+        if len(text) <= 1:
+            raise InputException("Need to provide a breakpoint number!")
+        bkpt_num = int(text[1])
+        for i, bkpt in enumerate(self.breakpoints):
+            if bkpt[0] == bkpt_num:
+                self.breakpoints.pop(i)
+                return f"Removed breakpoint {bkpt_num}"
+        raise InputException(f"Breakpoint {bkpt_num} not found!")
 
     @staticmethod
     def help_text():
@@ -124,8 +147,12 @@ class InputHandler():
                 out_text = self.parse_step(text)
             elif text[0] == 'time':
                 out_text = str(self.sim_time)
-            elif text[0] == 'breakpoint' or text[0] == 'bkpt':
+            elif text[0] == 'breakpoint' or text[0] == 'b':
                 out_text = self.parse_breakpoint(text)
+            elif text[0] == 'lsbrk':
+                out_text = self.lsbrk(text)
+            elif text[0] == 'delete':
+                out_text = self.delete(text)
             else:
                 raise InputException("Invalid Command!")
         except InputException as exception:
