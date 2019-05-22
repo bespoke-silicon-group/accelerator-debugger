@@ -19,6 +19,7 @@ class ManycoreModel(HWModel):
                 self.modules.append(Memory(f"rf_{i}_{j}", addr, wdata, wen,
                                            True, size=32))
         self.modules.append(BasicModule("r0_data", signals))
+        super(TestModel, self).__init__()
 
     def get_traced_modules(self):
         return self.modules

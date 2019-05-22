@@ -60,10 +60,7 @@ class InputHandler():
         self.command_output = command_output
         self.model = model
         self.display = display
-        self.sim_time = 0
         self.bkpt_namespace = {}
-        for module in self.model.get_traced_modules():
-            self.bkpt_namespace[module.get_name()] = module.get_signal_dict()
         self.breakpoints = []
         self.next_bkpt_num = 0
 
@@ -73,7 +70,15 @@ class InputHandler():
             num_steps = int(text[1])
         else:
             num_steps = 1
-        self.sim_time = self.model.update(self.sim_time, num_steps)
+        for step in range(num_steps):
+            self.model.step()
+            for module in self.model.get_traced_modules():
+                self.bkpt_namespace[module.get_name()] = module.get_signal_dict()
+            for num, cond in self.breakpoints:
+                if eval(cond, {}, self.bkpt_namespace):
+                    self.display.update()
+                    sim_time = self.model.sim_time
+                    return f"Hit breakpoint {num} at time {sim_time}"
         self.display.update()
         return ""
 
@@ -96,7 +101,13 @@ class InputHandler():
         condition = condition.replace('||', 'or')
         condition = condition.replace('!', 'not')
         modules = self.model.get_traced_modules()
-        current_cond = str(eval(condition, {}, self.bkpt_namespace))
+        try:
+            current_cond = eval(condition, {}, self.bkpt_namespace)
+        except:
+            raise InputException("Invalid breakpoint condition!")
+        if type(current_cond) != bool:
+            raise InputException("Breakpoint condition not boolean!")
+
         bkpt_num = self.next_bkpt_num
         self.next_bkpt_num += 1
         self.breakpoints.append((bkpt_num, condition))
@@ -127,7 +138,7 @@ class InputHandler():
         return htext
 
     def get_time_str(self):
-        return str(self.sim_time)
+        return str(self.model.sim_time)
 
     def accept(self, _):
         """ Handle user input """
@@ -146,7 +157,7 @@ class InputHandler():
             elif text[0] == 'step' or text[0] == 's':
                 out_text = self.parse_step(text)
             elif text[0] == 'time':
-                out_text = str(self.sim_time)
+                out_text = self.get_time_str()
             elif text[0] == 'breakpoint' or text[0] == 'b':
                 out_text = self.parse_breakpoint(text)
             elif text[0] == 'lsbrk':

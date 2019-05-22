@@ -104,7 +104,7 @@ class HWModule(metaclass=abc.ABCMeta):
     def __str__(self):
         raise NotImplementedError
 
-    def update_signals(self, curr_time, steps, step_time):
+    def step(self, curr_time, step_time):
         raise NotImplementedError
 
 
@@ -122,10 +122,10 @@ class BasicModule(HWModule):
             d[short_name] = signal.value
         return AttrDict(d)
 
-    def update_signals(self, curr_time, steps, step_time):
-        new_time = curr_time + steps * step_time
+    def step(self, curr_time, step_time):
+        new_time = curr_time + step_time
         for signal in self.get_signals():
-            signal.value = self.data.get_value(signal.symbol, new_time)
+            signal.value = Value(self.data.get_value(signal.symbol, new_time))
 
 
 class Memory(HWModule):
@@ -156,9 +156,9 @@ class Memory(HWModule):
         col_height = len(seq) // columns
         for row in range(col_height):
             for col in range(columns):
-                pos = (row * columns) + col
-                num = seq[row + (col_height * col)]
-                table += f" ({pos})={bin_to_hex(num)}".ljust(16)
+                addr = (row * columns) + col
+                val = seq[row + (col_height * col)]
+                table += f" ({addr})={str(val)}".ljust(16)
             table += '\n'
         return table
 
@@ -189,18 +189,17 @@ class Memory(HWModule):
         super(Memory, self).set_data(data)
         self.write_if_en()
 
-    def update_signals(self, curr_time, steps, step_time):
-        new_time = curr_time
-        for step in range(steps):
-            new_time += step_time
-            for signal in self.get_signals():
-                signal.value = self.data.get_value(signal.symbol, new_time)
-            self.write_if_en()
+    def step(self, curr_time, step_time):
+        new_time = curr_time + step_time
+        for signal in self.get_signals():
+            signal.value = Value(self.data.get_value(signal.symbol, new_time))
+        self.write_if_en()
 
 
 class HWModel(metaclass=abc.ABCMeta):
     def __init__(self):
         self.data = None
+        self.time = 0
 
     def get_traced_signals(self):
         signals = []
@@ -213,6 +212,14 @@ class HWModel(metaclass=abc.ABCMeta):
         for module in self.get_traced_modules():
             names.extend(module.get_signal_names())
         return names
+
+    @property
+    def sim_time(self):
+        return self.time
+
+    @sim_time.setter
+    def sim_time(self, value):
+        self.time = value
 
     @abc.abstractmethod
     def get_traced_modules(self):
@@ -229,11 +236,11 @@ class HWModel(metaclass=abc.ABCMeta):
             return None
         return req_module[0]
 
-    def update(self, curr_time, steps):
-        step_time = self.get_step_time()
+    def step(self):
+        self.sim_time += self.get_step_time()
         for module in self.get_traced_modules():
-            module.update_signals(curr_time, steps, step_time)
-        return curr_time + steps * step_time
+            module.step(self.sim_time, self.get_step_time())
+        return self.sim_time
 
     def set_data(self, data):
         self.data = data

@@ -49,11 +49,7 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
 [ ] Care about end time of simulation
 [ ] `clear` command to clear output from last command
 [ ] Implement breakpoints
-    [ ] Breakpoint on "arbitrary boolean expression" (assign number)
-        [ ] "Arbitrary boolean expression"; could eval(), maybe something
-            faster?
-    [ ] list breakpoints command (prints number, expression)
-    [ ] Remove breakpoint command (takes number)
+    [ ] Fix breakpoints to work with memory locations
     [ ] run <time> (run execution forward until <time>)
 [ ] Minor refactor with @property
 [ ] Reverse Execution

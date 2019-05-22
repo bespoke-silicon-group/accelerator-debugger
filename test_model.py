@@ -13,6 +13,7 @@ class TestModel(HWModel):
         self.modules.append(BasicModule("r0_data", signals))
         self.modules.append(Memory('mem', 'logic.waddr', 'logic.wdata',
                                    'logic.tx_en', True))
+        super(TestModel, self).__init__()
 
     def get_traced_modules(self):
         return self.modules
