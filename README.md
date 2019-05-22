@@ -41,13 +41,9 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
 ### Implementing Breakpoints
 `break <condition>` where the condition is a blend of variables and operators
 * Could implement with eval(), but language of condition needs to be python
-    * This is an easy fix with a couple find-replaces
+    * This can be fix with a couple find-replaces
     * Can be sped up with `compiler.compile()`
-* Alternatively, programmer uses variable names and constructs to build
-    expressions
-    * This is basically building the AST by hand, which is more secure than
-        using pure eval, but more work
-* Minor issue is getting vars from module into scope
+* Currently fails because signal values are strings instead of numbers
 
 ### TODO
 [ ] Care about end time of simulation
@@ -59,6 +55,7 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
     [ ] list breakpoints command (prints number, expression)
     [ ] Remove breakpoint command (takes number)
     [ ] run <time> (run execution forward until <time>)
+[ ] Minor refactor with @property
 [ ] Reverse Execution
     [ ] rstep (default 1, takes n)
     [ ] go <time> (go to specified time)

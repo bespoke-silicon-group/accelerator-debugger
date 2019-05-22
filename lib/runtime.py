@@ -85,8 +85,6 @@ class InputHandler():
         if len(text) <= 1:
             raise InputException("Breakpoint takes a condition")
         condition = " ".join(text[1:])
-        print(condition)
-        print(text)
         # Convert commonly used C expressions to python, != is hard though
         condition = condition.replace('&&', 'and')
         condition = condition.replace('||', 'or')
@@ -95,8 +93,7 @@ class InputHandler():
         namespace = {}
         for module in self.model.get_traced_modules():
             namespace[module.get_name()] = module.get_signal_dict()
-        print(namespace)
-        return eval(condition, {}, namespace)
+        return str(eval(condition, {}, namespace))
 
     @staticmethod
     def help_text():
@@ -159,8 +156,6 @@ class Runtime():
         self.display.update()
         handler = InputHandler(input_field, command_output,
                                self.model, self.display)
-
-        print(handler.parse_breakpoint("breakpoint r0_data.data_valid == 0".split()))
 
         container = pt_containers.HSplit([
             self.display.get_top_view(),

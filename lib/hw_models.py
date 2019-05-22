@@ -7,12 +7,58 @@ class AttrDict(dict):
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__ = self
 
-def bin_to_hex(bin_num):
-    if 'x' in bin_num or 'X' in bin_num:
-        return f"{len(bin_num)}'h" + ((len(bin_num)) // 4 * 'x')
-    if 'z' in bin_num or 'Z' in bin_num:
-        return f"{len(bin_num)}'h" + ((len(bin_num)) // 4 * 'z')
-    return hex(int(bin_num, 2))
+
+class Value():
+    """Values in VCD can have don't cares or high-impedence values, this
+    lets us equate value with and without don't cares, as well as translate
+    number into integers that we can"""
+    def __init__(self, value):
+        self.val_str = value.lower()
+        self.value = value
+        self.hex_str = None
+
+    def val_to_hex(self):
+        rev_num = self.value[::-1]
+        hex_num = ""
+        # Translate number in chunks of 4
+        num_len = len(self.value)
+        for i in range(0, num_len, 4):
+            end_idx = min(i + 4, num_len)
+            chunk_str = self.value[i:end_idx]
+            if 'x' in chunk_str:
+                hex_num += 'x'
+            elif 'z' in chunk_str:
+                hex_num += 'z'
+            else:
+                hex_num = hex(int(chunk_str, 2))[2:]
+        return hex_num
+
+    def __eq__(self, other):
+        if self.hex_str is None:
+            self.hex_str = self.val_to_hex()
+
+        if isinstance(other, Value):
+            str1, str2 = self.val_str, other.val_str
+        else:
+            if type(other) == str:
+                if '0b' in other:
+                    str1, str2  = self.val_str, other[2:]
+                elif '0x' in other:
+                    str1, str2 = self.hex_str, other[2:]
+                else:
+                    raise RuntimeError("Need to prefix value with 0b or 0x")
+            else: # Assumed to be an integer
+                str1, str2 = self.val_str, bin(other)[2:]
+        return all('x' in [c1,c2] or c1 == c2 for c1, c2 in zip(str1, str2))
+
+    def __str__(self):
+        if self.hex_str is None:
+            self.hex_str = self.val_to_hex()
+        return '0x' + self.hex_str
+
+    def __hash__(self):
+        return hash(self.val_str)
+
 
 class Signal():
     """Signals are compsed of the VCD symbol that represents the signal,
@@ -21,11 +67,11 @@ class Signal():
     def __init__(self, symbol, name, value):
         self.symbol = symbol
         self.name = name
-        self.value = value
+        self.value = Value(value)
 
     def __str__(self):
         short_name = self.name.split('.')[-1]
-        return f"{short_name}: {bin_to_hex(self.value)}"
+        return f"{short_name}: {str(self.value)}"
 
 
 class HWModule(metaclass=abc.ABCMeta):
@@ -112,7 +158,7 @@ class Memory(HWModule):
             for col in range(columns):
                 pos = (row * columns) + col
                 num = seq[row + (col_height * col)]
-                table += f"  ({pos}) {bin_to_hex(num)}".ljust(16)
+                table += f" ({pos})={bin_to_hex(num)}".ljust(16)
             table += '\n'
         return table
 
@@ -125,11 +171,11 @@ class Memory(HWModule):
             desc += self.print_mem_table(self.memory, columns=3) + "\n"
         else:
             for addr, value in enumerate(self.memory):
-                desc += f"    {addr}: {bin_to_hex(value)}\n"
+                desc += f"    {addr}:{str(value)}\n"
         return desc
 
     def write_if_en(self):
-        en_str = self.signals[2].value
+        en_str = self.signals[2].value.val_str
         en_val = int(en_str) if 'x' not in en_str else not self.enable_level
         if en_val == int(self.enable_level):
             mem_addr = self.signals[0].value
