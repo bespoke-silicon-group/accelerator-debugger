@@ -46,10 +46,7 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
 * Currently fails because signal values are strings instead of numbers
 
 ### TODO
-[ ] Care about end time of simulation
-[ ] `clear` command to clear output from last command
-[ ] Implement breakpoints
-    [ ] run <time> (run execution forward until <time>)
+[ ] Update help text
 [ ] Minor refactor with @property
 [ ] Reverse Execution
     [ ] rstep (default 1, takes n)

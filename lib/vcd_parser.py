@@ -246,7 +246,6 @@ class VCDData():
         """
         return self.endtime
 
-
 # =head1 NAME
 #
 # Verilog_VCD - Parse a Verilog VCD text file

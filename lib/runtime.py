@@ -16,7 +16,7 @@ from prompt_toolkit.layout.menus import CompletionsMenu
 import prompt_toolkit.layout.containers as pt_containers
 
 COMMANDS = ['step', 'info', 'list', 'time', 'help', 'breakpoint', 'lsbrk',
-            'delete']
+            'delete', 'run', 'clear']
 
 
 class ModuleCompleter(Completer):
@@ -74,13 +74,17 @@ class InputHandler():
             num_steps = 1
         for step in range(num_steps):
             self.model.step()
+            sim_time = self.model.sim_time
             for module in self.model.get_traced_modules():
                 self.bkpt_namespace[module.get_name()] = module.get_signal_dict()
             for num, cond in self.breakpoints:
                 if eval(cond, {}, self.bkpt_namespace):
                     self.display.update()
-                    sim_time = self.model.sim_time
                     return f"Hit breakpoint {num} at time {sim_time}"
+            if sim_time >= self.model.get_end_time():
+                self.display.update()
+                return f"Hit end of simulation at time {self.model.sim_time}"
+
         self.display.update()
         return ""
 
@@ -131,6 +135,17 @@ class InputHandler():
                 return f"Removed breakpoint {bkpt_num}"
         raise InputException(f"Breakpoint {bkpt_num} not found!")
 
+    def run(self, text):
+        curr_time = self.model.sim_time
+        if len(text) == 1:  # Run until breakpoint or finish
+            end_time = self.model.end_time
+        else:
+            end_time = int(text[1])
+            if end_time < curr_time:
+                raise InputException("Time must be later than current time")
+        steps = (end_time - curr_time) // self.model.step_time
+        return self.parse_step(f"step {steps}".split())
+
     @staticmethod
     def help_text():
         htext = "HELP:\n    step <n>: Step the simulation\n"
@@ -166,6 +181,10 @@ class InputHandler():
                 out_text = self.lsbrk(text)
             elif text[0] == 'delete':
                 out_text = self.delete(text)
+            elif text[0] == 'run':
+                out_text = self.run(text)
+            elif text[0] == 'clear':
+                out_text = ""
             else:
                 raise InputException("Invalid Command!")
         except InputException as exception:

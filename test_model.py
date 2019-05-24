@@ -18,7 +18,8 @@ class TestModel(HWModel):
     def get_traced_modules(self):
         return self.modules
 
-    def get_step_time(self):
+    @property
+    def step_time(self):
         return 100
 
 class TestView(Display):

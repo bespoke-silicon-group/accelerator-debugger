@@ -215,6 +215,7 @@ class HWModel(metaclass=abc.ABCMeta):
     def __init__(self):
         self.data = None
         self.time = 0
+        self.end_time = None
 
     def get_traced_signals(self):
         signals = []
@@ -240,9 +241,12 @@ class HWModel(metaclass=abc.ABCMeta):
     def get_traced_modules(self):
         raise NotImplementedError
 
-    @abc.abstractmethod
-    def get_step_time(self):
+    @property
+    def step_time(self):
         raise NotImplementedError
+
+    def get_end_time(self):
+        return self.end_time
 
     def get_module(self, name):
         modules = self.get_traced_modules()
@@ -252,12 +256,15 @@ class HWModel(metaclass=abc.ABCMeta):
         return req_module[0]
 
     def step(self):
-        self.sim_time += self.get_step_time()
+        if self.sim_time >= self.end_time:
+            return self.sim_time
+        self.sim_time += self.step_time
         for module in self.get_traced_modules():
-            module.step(self.sim_time, self.get_step_time())
+            module.step(self.sim_time, self.step_time)
         return self.sim_time
 
     def set_data(self, data):
         self.data = data
+        self.end_time = data.get_endtime()
         for module in self.get_traced_modules():
             module.set_data(data)
