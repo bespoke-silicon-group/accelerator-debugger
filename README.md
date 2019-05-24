@@ -62,3 +62,13 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
 [ ] Hook into ELF file stubs (there's a GNU library for this)
 [ ] Forward search to first don't care signal after reset
 [ ] Convey enums and structs into debugger -- doesn't exist in VCD
+
+## Debugging The Manycore
+* Register files (but maybe only some registers)
+    * s7, s8 get loads; a0 holds store value, a1 holds address, a0/a1 hold
+        addresses for loads (x10,x11, x23, x24)
+    * Memory locations that are being loaded and stored on each core
+        [0x1980-0x198c]
+    * Maybe specifics on which cores are being addressed, but this is
+     implicit in the address
+* Remote loads and stores between cores

@@ -146,16 +146,43 @@ class BasicModule(HWModule):
 class Memory(HWModule):
     """A memory traces when writes occur based on the enable signal.
     If a size is given, we allocated a memory of the given size,
-    otherwise memory locations are allocated lazily when writes occur"""
-    def __init__(self, module_name, addr, wdata, enable, enable_level, size=0):
+    otherwise memory locations are allocated lazily when writes occur.
+    The user can also specify segments of addresses that should be
+    exclusively tracked and displayed.
+    segments should be given as a list of individual address and
+    (start_addr, end_addr) tuples, all as hex
+    """
+    def __init__(self, module_name, addr, wdata, enable, enable_level,
+                 segments=[], size=0):
         HWModule.__init__(self, module_name, [addr, wdata, enable])
         self.size = size
         # If the user gave a size, we should allocate memory
         if self.size:
-            self.memory = ['0'] * self.size
+            self.memory = [(x, '0') for x in range(self.size)]
+            self.memory = dict(self.memory)
         else:
             self.memory = {}
+        self.segments = segments
+        for i, segment in enumerate(self.segments):
+            if isinstance(segment, tuple):
+                self.segments[i] = (int(segment[0], 16), int(segment[1], 16))
+            else:
+                self.segments[i] = int(segment, 16)
         self.enable_level = bool(enable_level)
+
+    def addr_in_range(self, addr):
+        """Check if an integer address is in one of the ranges given by the
+        user"""
+        if not self.segments:
+            return True
+        for segment in self.segments:
+            if isinstance(segment, tuple):
+                if segment[0] <= addr <= segment[1]:
+                    return True
+            else:
+                if segment == addr:
+                    return True
+        return False
 
     def get_signal_dict(self):
         d = {}
@@ -173,26 +200,27 @@ class Memory(HWModule):
             for col in range(columns):
                 addr = (row * columns) + col
                 val = seq[row + (col_height * col)]
-                table += f" ({addr})={str(val)}".ljust(16)
+                table += f" ({addr})={str(val)}".ljust(8)
             table += '\n'
         return table
 
     def __str__(self):
         desc = self.get_name() + ": "
         for signal in self.get_signals():
-            desc += f"\n  {str(signal)}"
-        if self.size:
-            desc += self.print_mem_table(self.memory, columns=3) + "\n"
+            desc += f"\n  {str(signal)}\n"
+        if self.size and not self.segments:
+            desc += "\n" + self.print_mem_table(self.memory, columns=3) + "\n"
         else:
             for addr in self.memory.keys():
-                desc += f"\n    {addr}:{str(self.memory[addr])}\n"
+                if self.addr_in_range(addr):
+                    desc += f"   {addr}:{str(self.memory[addr])}\n"
         return desc
 
     def write_if_en(self):
         en_val = bool(self.signals[2].value.as_int)
         if en_val == self.enable_level:
             mem_addr = self.signals[0].value.as_int
-            if mem_addr is None:
+            if mem_addr is None or not self.addr_in_range(mem_addr):
                 return
             if self.size:
                 if 'x' in mem_addr:
