@@ -148,10 +148,15 @@ class InputHandler():
 
     @staticmethod
     def help_text():
-        htext = "HELP:\n    step <n>: Step the simulation\n"
+        htext = "HELP:\n    step <n>: Step the simulation n times\n"
         htext += "    info <module_name>: Print the status of a given module\n"
         htext += "    time: Print the current simulation time\n"
-        htext += "    help: Print this text\n"
+        htext += "    breakpoint <cond>: Set a breakpoint for a given condition\n"
+        htext += "    lsbrk: List set breakpoints\n"
+        htext += "    delete <num>: Delete a breakpoint, specified by number\n"
+        htext += "    run <time>: Run simulation until a specified time\n"
+        htext += "    clear: Clear the output window\n"
+        htext += "    help: Print this text"
         return htext
 
     def get_time_str(self):

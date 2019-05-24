@@ -46,7 +46,6 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
 * Currently fails because signal values are strings instead of numbers
 
 ### TODO
-[ ] Update help text
 [ ] Minor refactor with @property
 [ ] Reverse Execution
     [ ] rstep (default 1, takes n)
@@ -61,3 +60,5 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
     checks if JSON or VPD format and either runs `parse_vpd()` or just loads.
     Add a command line --regen option to force running `parse_vpd()`
 [ ] Hook into ELF file stubs (there's a GNU library for this)
+[ ] Forward search to first don't care signal after reset
+[ ] Convey enums and structs into debugger -- doesn't exist in VCD
