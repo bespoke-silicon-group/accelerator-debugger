@@ -49,7 +49,6 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
 [ ] Care about end time of simulation
 [ ] `clear` command to clear output from last command
 [ ] Implement breakpoints
-    [ ] Fix breakpoints to work with memory locations
     [ ] run <time> (run execution forward until <time>)
 [ ] Minor refactor with @property
 [ ] Reverse Execution

@@ -13,9 +13,20 @@ class Value():
     lets us equate value with and without don't cares, as well as translate
     number into integers that we can"""
     def __init__(self, value):
-        self.val_str = value.lower()
-        self.value = value
-        self.hex_str = None
+        self.value = value.lower()
+        self.hex_str, self.int_val = self.val_to_hex()
+
+    @property
+    def as_int(self):
+        return self.int_val
+
+    @property
+    def as_hex(self):
+        return self.hex_str
+
+    @property
+    def as_str(self):
+        return self.value
 
     def val_to_hex(self):
         rev_num = self.value[::-1]
@@ -30,34 +41,38 @@ class Value():
             elif 'z' in chunk_str:
                 hex_num += 'z'
             else:
-                hex_num = hex(int(chunk_str, 2))[2:]
-        return hex_num
+                hex_num += hex(int(chunk_str, 2))[2:]
+        try:
+            int_val = int(hex_num, 16)
+        except ValueError as e:
+            int_val = None
+        return ('0x' + hex_num, int_val)
 
     def __eq__(self, other):
-        if self.hex_str is None:
-            self.hex_str = self.val_to_hex()
-
         if isinstance(other, Value):
-            str1, str2 = self.val_str, other.val_str
+            str1, str2 = self.value, other.value
         else:
             if type(other) == str:
                 if '0b' in other:
-                    str1, str2  = self.val_str, other[2:]
+                    str1, str2  = self.as_str, other[2:]
                 elif '0x' in other:
-                    str1, str2 = self.hex_str, other[2:]
+                    str1, str2 = self.as_hex[2:], other[2:]
                 else:
                     raise RuntimeError("Need to prefix value with 0b or 0x")
             else: # Assumed to be an integer
-                str1, str2 = self.val_str, bin(other)[2:]
+                str1, str2 = self.value, bin(other)[2:]
         return all('x' in [c1,c2] or c1 == c2 for c1, c2 in zip(str1, str2))
 
     def __str__(self):
-        if self.hex_str is None:
-            self.hex_str = self.val_to_hex()
-        return '0x' + self.hex_str
+        return self.as_hex
+
+    def __repr__(self):
+        return str(self.as_int)
 
     def __hash__(self):
-        return hash(self.val_str)
+        if self.int_val is None:
+            return 0
+        return self.int_val
 
 
 class Signal():
@@ -140,14 +155,14 @@ class Memory(HWModule):
             self.memory = ['0'] * self.size
         else:
             self.memory = {}
-        self.enable_level = enable_level
+        self.enable_level = bool(enable_level)
 
     def get_signal_dict(self):
         d = {}
         for signal in self.get_signals():
             short_name = signal.name.split('.')[-1]
             d[short_name] = signal.value
-        d['mem'] = self.memory
+        d.update(self.memory)
         return AttrDict(d)
 
     @staticmethod
@@ -165,20 +180,20 @@ class Memory(HWModule):
     def __str__(self):
         desc = self.get_name() + ": "
         for signal in self.get_signals():
-            desc += f"\n    {str(signal)}"
-        desc += "\nmem:\n"
+            desc += f"\n  {str(signal)}"
         if self.size:
             desc += self.print_mem_table(self.memory, columns=3) + "\n"
         else:
-            for addr, value in enumerate(self.memory):
-                desc += f"    {addr}:{str(value)}\n"
+            for addr in self.memory.keys():
+                desc += f"\n    {addr}:{str(self.memory[addr])}\n"
         return desc
 
     def write_if_en(self):
-        en_str = self.signals[2].value.val_str
-        en_val = int(en_str) if 'x' not in en_str else not self.enable_level
-        if en_val == int(self.enable_level):
-            mem_addr = self.signals[0].value
+        en_val = bool(self.signals[2].value.as_int)
+        if en_val == self.enable_level:
+            mem_addr = self.signals[0].value.as_int
+            if mem_addr is None:
+                return
             if self.size:
                 if 'x' in mem_addr:
                     return

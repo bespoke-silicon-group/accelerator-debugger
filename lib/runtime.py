@@ -61,6 +61,8 @@ class InputHandler():
         self.model = model
         self.display = display
         self.bkpt_namespace = {}
+        for module in self.model.get_traced_modules():
+            self.bkpt_namespace[module.get_name()] = module.get_signal_dict()
         self.breakpoints = []
         self.next_bkpt_num = 0
 
