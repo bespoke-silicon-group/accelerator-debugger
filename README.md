@@ -71,4 +71,12 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
         [0x1980-0x198c]
     * Maybe specifics on which cores are being addressed, but this is
      implicit in the address
+* Loads at  0xba0, 0xba4
+    * 00052b83 rd = 23, addr = r10
+    * 0005ac03 rd = 24, addr = r11
+* Stores at 0xc24, 0xc7c, 0xc90, 0xca4
+    * 00a6a023, (data=r10, addr=r13)
+    * 00a5a023, (data=r10, addr=r11)
+    * 00a5a023, (data=r10, addr=r11)
+    * 00a5a023, (data=r10, addr=r11)
 * Remote loads and stores between cores

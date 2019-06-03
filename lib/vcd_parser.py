@@ -35,6 +35,13 @@ class VCDData():
                 break
         return curr_value
 
+    def get_next_change(self, symbol, curr_time):
+        signal = self.vcd[symbol]
+        for (tv_time, tv_val) in signal['tv']:
+            if tv_time > curr_time:
+                return (tv_time, tv_val)
+        return None
+
     def get_symbol(self, name):
         return self.mapping[name]
 

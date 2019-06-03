@@ -142,6 +142,11 @@ class BasicModule(HWModule):
         for signal in self.get_signals():
             signal.value = Value(self.data.get_value(signal.symbol, new_time))
 
+    def update(self, curr_time, step_time, num_steps):
+        new_time = curr_time + step_time * num_steps
+        for signal in self.get_signals():
+            signal.value = Value(self.data.get_value(signal.symbol, new_time))
+
 
 class Memory(HWModule):
     """A memory traces when writes occur based on the enable signal.
@@ -150,10 +155,12 @@ class Memory(HWModule):
     The user can also specify segments of addresses that should be
     exclusively tracked and displayed.
     segments should be given as a list of individual address and
-    (start_addr, end_addr) tuples, all as hex
+    (start_addr, end_addr) tuples, all as hex.
+    show_signals sets whether address, data, and write_enable signals should
+    be show (default False)
     """
     def __init__(self, module_name, addr, wdata, enable, enable_level,
-                 segments=[], size=0):
+                 segments=[], size=0, show_signals=False):
         HWModule.__init__(self, module_name, [addr, wdata, enable])
         self.size = size
         # If the user gave a size, we should allocate memory
@@ -169,6 +176,7 @@ class Memory(HWModule):
             else:
                 self.segments[i] = int(segment, 16)
         self.enable_level = bool(enable_level)
+        self.show_signals = show_signals
 
     def addr_in_range(self, addr):
         """Check if an integer address is in one of the ranges given by the
@@ -206,27 +214,34 @@ class Memory(HWModule):
 
     def __str__(self):
         desc = self.get_name() + ": "
-        for signal in self.get_signals():
-            desc += f"\n  {str(signal)}\n"
+        if self.show_signals:
+            for signal in self.get_signals():
+                desc += f"\n  {str(signal)}"
         if self.size and not self.segments:
             desc += "\n" + self.print_mem_table(self.memory, columns=3) + "\n"
         else:
             for addr in self.memory.keys():
                 if self.addr_in_range(addr):
-                    desc += f"   {addr}:{str(self.memory[addr])}\n"
+                    desc += f"\n   {addr}:{str(self.memory[addr])}"
         return desc
 
-    def write_if_en(self):
+    def is_enable(self):
         en_val = bool(self.signals[2].value.as_int)
-        if en_val == self.enable_level:
-            mem_addr = self.signals[0].value.as_int
-            if mem_addr is None or not self.addr_in_range(mem_addr):
+        return en_val == self.enable_level
+
+    def write(self):
+        mem_addr = self.signals[0].value.as_int
+        if mem_addr is None or not self.addr_in_range(mem_addr):
+            return
+        if self.size:
+            if 'x' in mem_addr:
                 return
-            if self.size:
-                if 'x' in mem_addr:
-                    return
-                mem_addr = int(mem_addr, 2)
-            self.memory[mem_addr] = self.signals[1].value
+            mem_addr = int(mem_addr, 2)
+        self.memory[mem_addr] = self.signals[1].value
+
+    def write_if_en(self):
+        if self.is_enable():
+            self.write()
 
     def set_data(self, data):
         super(Memory, self).set_data(data)
@@ -237,6 +252,22 @@ class Memory(HWModule):
         for signal in self.get_signals():
             signal.value = Value(self.data.get_value(signal.symbol, new_time))
         self.write_if_en()
+
+    def update(self, curr_time, step_time, num_steps):
+        enable = self.signals[2]
+        end_time = curr_time + num_steps * step_time
+        while curr_time < end_time:
+            next_change = self.data.get_next_change(enable.symbol, curr_time)
+            if next_change is None:
+                return
+            curr_time = next_change[0]
+            enable.value = Value(next_change[1])
+            if self.is_enable():
+                # Update addr and data
+                for sig in self.signals[:2]:
+                    sig.value = Value(self.data.get_value(sig.symbol, curr_time))
+                # Perform write
+                self.write()
 
 
 class HWModel(metaclass=abc.ABCMeta):
@@ -296,3 +327,12 @@ class HWModel(metaclass=abc.ABCMeta):
         self.end_time = data.get_endtime()
         for module in self.get_traced_modules():
             module.set_data(data)
+
+    def update(self, num_steps):
+        end_time = num_steps * self.step_time + self.sim_time
+        end_time = min(self.get_end_time(), end_time)
+        num_steps = (end_time - self.sim_time) /  self.step_time
+        for module in self.get_traced_modules():
+            module.update(self.sim_time, self.step_time, num_steps)
+        self.sim_time = end_time
+        return self.sim_time

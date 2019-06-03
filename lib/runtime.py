@@ -72,18 +72,22 @@ class InputHandler():
             num_steps = int(text[1])
         else:
             num_steps = 1
-        for step in range(num_steps):
-            self.model.step()
-            sim_time = self.model.sim_time
-            for module in self.model.get_traced_modules():
-                self.bkpt_namespace[module.get_name()] = module.get_signal_dict()
-            for num, cond in self.breakpoints:
-                if eval(cond, {}, self.bkpt_namespace):
+        if self.breakpoints:
+            for step in range(num_steps):
+                self.model.step()
+                sim_time = self.model.sim_time
+                for module in self.model.get_traced_modules():
+                    signals = module.get_signal_dict()
+                    self.bkpt_namespace[module.get_name()] = signals
+                for num, cond in self.breakpoints:
+                    if eval(cond, {}, self.bkpt_namespace):
+                        self.display.update()
+                        return f"Hit breakpoint {num} at time {sim_time}"
+                if sim_time >= self.model.get_end_time():
                     self.display.update()
-                    return f"Hit breakpoint {num} at time {sim_time}"
-            if sim_time >= self.model.get_end_time():
-                self.display.update()
-                return f"Hit end of simulation at time {self.model.sim_time}"
+                    return f"Hit end of simulation at time {self.model.sim_time}"
+        else:
+            self.model.update(num_steps)
 
         self.display.update()
         return ""
@@ -103,9 +107,6 @@ class InputHandler():
             raise InputException("Breakpoint takes a condition")
         condition = " ".join(text[1:])
         # Convert commonly used C expressions to python, != is hard though
-        condition = condition.replace('&&', 'and')
-        condition = condition.replace('||', 'or')
-        condition = condition.replace('!', 'not')
         modules = self.model.get_traced_modules()
         try:
             current_cond = eval(condition, {}, self.bkpt_namespace)

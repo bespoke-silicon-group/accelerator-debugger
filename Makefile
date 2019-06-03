@@ -1,4 +1,13 @@
+PYPY := pypy
+ifdef PYPY
+    PYTHON := $(PYPY)
+else
+    PYTHON := python3
+endif
+
+# all:
+	# pipenv run $(PYTHON) debugger.py data/vcd.vcd manycore
 all:
-	pipenv run python3 debugger.py data/vcd.vcd manycore
+	$(PYTHON) debugger.py data/vcd.vcd manycore
 test:
-	pipenv run python3 debugger.py data/ex.vcd test
+	pipenv run $(PYTHON) debugger.py data/ex.vcd test

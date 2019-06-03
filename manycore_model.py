@@ -18,14 +18,16 @@ class ManycoreModel(HWModel):
                 wen = header + "rf_wen"
                 self.modules.append(Memory(f"rf_{i}_{j}", addr, wdata, wen,
                                            True, size=32,
-                                           segments=['a', 'b', '17', '18']))
+                                           segments=['a', 'b', '17', '18'],
+                                           show_signals=False))
         self.modules.append(BasicModule("r0_data", signals))
         super(ManycoreModel, self).__init__()
 
     def get_traced_modules(self):
         return self.modules
 
-    def get_step_time(self):
+    @property
+    def step_time(self):
         return 10
 
 
