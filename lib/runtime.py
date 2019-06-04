@@ -15,8 +15,8 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout.menus import CompletionsMenu
 import prompt_toolkit.layout.containers as pt_containers
 
-
-COMMANDS = ['step', 'info', 'list', 'time', 'help']
+COMMANDS = ['step', 'info', 'list', 'time', 'help', 'breakpoint', 'lsbrk',
+            'delete', 'run', 'clear']
 
 
 class ModuleCompleter(Completer):
@@ -60,7 +60,11 @@ class InputHandler():
         self.command_output = command_output
         self.model = model
         self.display = display
-        self.sim_time = 0
+        self.bkpt_namespace = {}
+        for module in self.model.get_traced_modules():
+            self.bkpt_namespace[module.get_name()] = module.get_signal_dict()
+        self.breakpoints = []
+        self.next_bkpt_num = 0
 
     def parse_step(self, text):
         """ Handle the 'step' command """
@@ -68,9 +72,26 @@ class InputHandler():
             num_steps = int(text[1])
         else:
             num_steps = 1
-        self.sim_time = self.model.update(self.sim_time, num_steps)
-        self.display.update()
-        return ""
+        if self.breakpoints:
+            for step in range(num_steps):
+                self.model.step()
+                sim_time = self.model.sim_time
+                for module in self.model.get_traced_modules():
+                    signals = module.get_signal_dict()
+                    self.bkpt_namespace[module.get_name()] = signals
+                for num, cond in self.breakpoints:
+                    if eval(cond, {}, self.bkpt_namespace):
+                        self.display.update()
+                        return f"Hit breakpoint {num} at time {sim_time}"
+                if sim_time >= self.model.get_end_time():
+                    self.display.update()
+                    return f"Hit end of simulation at time {self.model.sim_time}"
+        else:
+            self.model.update(num_steps)
+            self.display.update()
+            if self.model.sim_time >= self.model.get_end_time():
+                return f"Hit end of simulation at time {self.model.sim_time}"
+            return ""
 
     def parse_info(self, text):
         """ Handle the 'info' command """
@@ -82,16 +103,66 @@ class InputHandler():
             raise InputException("Module not found!")
         return f"{str(req_module[0])}\n"
 
+    def parse_breakpoint(self, text):
+        if len(text) <= 1:
+            raise InputException("Breakpoint takes a condition")
+        condition = " ".join(text[1:])
+        # Convert commonly used C expressions to python, != is hard though
+        modules = self.model.get_traced_modules()
+        try:
+            current_cond = eval(condition, {}, self.bkpt_namespace)
+        except:
+            raise InputException("Invalid breakpoint condition!")
+        if type(current_cond) != bool:
+            raise InputException("Breakpoint condition not boolean!")
+
+        bkpt_num = self.next_bkpt_num
+        self.next_bkpt_num += 1
+        self.breakpoints.append((bkpt_num, condition))
+        return f"Breakpoint {bkpt_num}: {condition}"
+
+    def lsbrk(self, text):
+        out_text = ""
+        for bkpt_num, condition in self.breakpoints:
+            out_text += f"Breakpoint {bkpt_num}: {condition}\n"
+        return out_text[:-1]  # Strip final newline
+
+    def delete(self, text):
+        if len(text) <= 1:
+            raise InputException("Need to provide a breakpoint number!")
+        bkpt_num = int(text[1])
+        for i, bkpt in enumerate(self.breakpoints):
+            if bkpt[0] == bkpt_num:
+                self.breakpoints.pop(i)
+                return f"Removed breakpoint {bkpt_num}"
+        raise InputException(f"Breakpoint {bkpt_num} not found!")
+
+    def run(self, text):
+        curr_time = self.model.sim_time
+        if len(text) == 1:  # Run until breakpoint or finish
+            end_time = self.model.end_time
+        else:
+            end_time = int(text[1])
+            if end_time < curr_time:
+                raise InputException("Time must be later than current time")
+        steps = (end_time - curr_time) // self.model.step_time
+        return self.parse_step(f"step {steps}".split())
+
     @staticmethod
     def help_text():
-        htext = "HELP:\n    step <n>: Step the simulation\n"
+        htext = "HELP:\n    step <n>: Step the simulation n times\n"
         htext += "    info <module_name>: Print the status of a given module\n"
         htext += "    time: Print the current simulation time\n"
-        htext += "    help: Print this text\n"
+        htext += "    breakpoint <cond>: Set a breakpoint for a given condition\n"
+        htext += "    lsbrk: List set breakpoints\n"
+        htext += "    delete <num>: Delete a breakpoint, specified by number\n"
+        htext += "    run <time>: Run simulation until a specified time\n"
+        htext += "    clear: Clear the output window\n"
+        htext += "    help: Print this text"
         return htext
 
     def get_time_str(self):
-        return str(self.sim_time)
+        return str(self.model.sim_time)
 
     def accept(self, _):
         """ Handle user input """
@@ -107,10 +178,20 @@ class InputHandler():
                 out_text = self.help_text()
             elif text[0] == 'info':
                 out_text = self.parse_info(text)
-            elif text[0] == 'step':
+            elif text[0] == 'step' or text[0] == 's':
                 out_text = self.parse_step(text)
             elif text[0] == 'time':
-                out_text += str(self.sim_time)
+                out_text = self.get_time_str()
+            elif text[0] == 'breakpoint' or text[0] == 'b':
+                out_text = self.parse_breakpoint(text)
+            elif text[0] == 'lsbrk':
+                out_text = self.lsbrk(text)
+            elif text[0] == 'delete':
+                out_text = self.delete(text)
+            elif text[0] == 'run':
+                out_text = self.run(text)
+            elif text[0] == 'clear':
+                out_text = ""
             else:
                 raise InputException("Invalid Command!")
         except InputException as exception:
@@ -141,7 +222,6 @@ class Runtime():
         self.display.update()
         handler = InputHandler(input_field, command_output,
                                self.model, self.display)
-
 
         container = pt_containers.HSplit([
             self.display.get_top_view(),

@@ -2,6 +2,8 @@
 # http://cpansearch.perl.org/src/GSULLIVAN/Verilog-VCD-0.03/lib/Verilog/VCD.pm
 
 import re
+import os.path
+import json
 
 
 # our local exception for VCD parsing errors (inherited from Exception)
@@ -10,12 +12,33 @@ class VCDParseError(Exception):
 
 
 class VCDData():
-    def __init__(self, filename, siglist=None):
+    def __init__(self, filename, siglist=None, cached=False, regen=False):
         self.timescale = None
         self.check_signals(filename, siglist)
 
-        self.vcd = self._parse_vcd(filename, only_sigs=False,
-                                   siglist=siglist, opt_timescale='')
+        if cached:
+            cached_fname = filename + ".cached"
+            if os.path.isfile(cached_fname) and not regen:
+                # Load cache file instead of reading vcd data
+                print("Cached data found, loading")
+                with open(cached_fname, "r") as fp:
+                    cache_dict = json.load(fp)
+                    self.vcd = cache_dict['vcd']
+                    self.timescale = cache_dict['timescale']
+                    self.endtime = cache_dict['endtime']
+            else:
+                print("Regenerating cached data")
+                self.vcd = self._parse_vcd(filename, only_sigs=False,
+                                           siglist=siglist, opt_timescale='')
+                cache_dict = {'vcd' : self.vcd,
+                              'endtime': self.endtime,
+                              'timescale': self.timescale}
+                with open(cached_fname, 'w+') as fp:
+                    json.dump(cache_dict, fp)
+                print("Data generated and cached!")
+        else:
+            self.vcd = self._parse_vcd(filename, only_sigs=False,
+                                       siglist=siglist, opt_timescale='')
         self.mapping = {}
         for k in self.vcd.keys():
             signal = self.vcd[k]
@@ -34,6 +57,13 @@ class VCDData():
             elif time < tv_time:
                 break
         return curr_value
+
+    def get_next_change(self, symbol, curr_time):
+        signal = self.vcd[symbol]
+        for (tv_time, tv_val) in signal['tv']:
+            if tv_time > curr_time:
+                return (tv_time, tv_val)
+        return None
 
     def get_symbol(self, name):
         return self.mapping[name]
@@ -245,7 +275,6 @@ class VCDData():
         If called before a file is parsed, it returns an undefined value.
         """
         return self.endtime
-
 
 # =head1 NAME
 #

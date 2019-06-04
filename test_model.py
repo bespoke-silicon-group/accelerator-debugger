@@ -11,17 +11,19 @@ class TestModel(HWModel):
         self.modules = []
         signals = ['logic.data', 'logic.data_valid']
         self.modules.append(BasicModule("r0_data", signals))
-        self.modules.append(Memory('mem', 'logic.waddr', 'logic.wdata',
+        self.modules.append(Memory('memory', 'logic.waddr', 'logic.wdata',
                                    'logic.tx_en', True))
+        super(TestModel, self).__init__()
 
     def get_traced_modules(self):
         return self.modules
 
-    def get_step_time(self):
+    @property
+    def step_time(self):
         return 100
 
 class TestView(Display):
     """ The Display for viewing TestModel """
     def gen_top_view(self, model):
-        return HSplit(View(model.get_module('mem')),
+        return HSplit(View(model.get_module('memory')),
                       View(model.get_module('r0_data')))

@@ -12,9 +12,10 @@ from manycore_model import ManycoreModel, ManycoreView
 def main():
     """Run the debugger"""
     parser = argparse.ArgumentParser(description='VCD Trace Debugger')
+    parser.add_argument('--regen', action='store_true', default=False,
+                        help='Force regenting parsed VCD data')
     parser.add_argument("INPUT", type=str,
                         help="Input VCD file")
-
     parser.add_argument('MODEL', type=str,
                         help="Model for HW")
 
@@ -27,7 +28,8 @@ def main():
         model = ManycoreModel()
         display = ManycoreView(model)
 
-    vcd = VCDData(args.INPUT, siglist=model.get_signal_names())
+    vcd = VCDData(args.INPUT, siglist=model.get_signal_names(),
+                  cached=True, regen=args.regen)
     model.set_data(vcd)
 
     runtime = Runtime(display, model)

@@ -38,16 +38,42 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
  steps all the module contained within it. Then, we can update
  each pane with the new information.
 
+### Implementing Breakpoints
+`break <condition>` where the condition is a blend of variables and operators
+* Could implement with eval(), but language of condition needs to be python
+    * This can be fix with a couple find-replaces
+    * Can be sped up with `compiler.compile()`
+* Currently fails because signal values are strings instead of numbers
+
 ### TODO
-[ ] Care about end time of simulation
-[ ] Implement breakpoints
-    [ ] Breakpoint on "arbitrary boolean expression" (assign number)
-        [ ] "Arbitrary boolean expression"; could eval(), maybe something
-            faster?
-    [ ] list breakpoints command (prints number, expression)
-    [ ] Remove breakpoint command (takes number)
-    [ ] run <time> (run execution forward until <time>)
+[ ] Minor refactor with @property
 [ ] Reverse Execution
     [ ] rstep (default 1, takes n)
     [ ] go <time> (go to specified time)
 [ ] Always show simulation time to right of command bar (as rprompt)
+[ ] When instantiating module, SW dev can decide what signals to include
+   (by default, includes all)
+[ ] Display information as densely as possible (Micheal, Mark disagrees)
+
+### Stretch
+[ ] Hook into ELF file stubs (there's a GNU library for this)
+[ ] Forward search to first don't care signal after reset
+[ ] Convey enums and structs into debugger -- doesn't exist in VCD
+
+## Debugging The Manycore
+* Register files (but maybe only some registers)
+    * s7, s8 get loads; a0 holds store value, a1 holds address, a0/a1 hold
+        addresses for loads (x10,x11, x23, x24)
+    * Memory locations that are being loaded and stored on each core
+        [0x1980-0x198c]
+    * Maybe specifics on which cores are being addressed, but this is
+     implicit in the address
+* Loads at  0xba0, 0xba4
+    * 00052b83 rd = 23, addr = r10
+    * 0005ac03 rd = 24, addr = r11
+* Stores at 0xc24, 0xc7c, 0xc90, 0xca4
+    * 00a6a023, (data=r10, addr=r13)
+    * 00a5a023, (data=r10, addr=r11)
+    * 00a5a023, (data=r10, addr=r11)
+    * 00a5a023, (data=r10, addr=r11)
+* Remote loads and stores between cores
