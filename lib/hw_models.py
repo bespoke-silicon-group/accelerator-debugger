@@ -29,19 +29,21 @@ class Value():
         return self.value
 
     def val_to_hex(self):
-        rev_num = self.value[::-1]
         hex_num = ""
         # Translate number in chunks of 4
         num_len = len(self.value)
         for i in range(0, num_len, 4):
             end_idx = min(i + 4, num_len)
-            chunk_str = self.value[i:end_idx]
+            if i == 0:
+                chunk_str = self.value[-(i + 4):]
+            else:
+                chunk_str = self.value[-(i + 4):-i]
             if 'x' in chunk_str:
                 hex_num += 'x'
             elif 'z' in chunk_str:
                 hex_num += 'z'
             else:
-                hex_num += hex(int(chunk_str, 2))[2:]
+                hex_num = hex(int(chunk_str, 2))[2:] + hex_num
         try:
             int_val = int(hex_num, 16)
         except ValueError as e:
@@ -87,6 +89,9 @@ class Signal():
     def __str__(self):
         short_name = self.name.split('.')[-1]
         return f"{short_name}: {str(self.value)}"
+
+    def __repr__(self):
+        return str(self) + " " + self.symbol
 
 
 class HWModule(metaclass=abc.ABCMeta):
@@ -234,9 +239,8 @@ class Memory(HWModule):
         if mem_addr is None or not self.addr_in_range(mem_addr):
             return
         if self.size:
-            if 'x' in mem_addr:
-                return
-            mem_addr = int(mem_addr, 2)
+            if mem_addr >= self.size:
+                raise ValueError("Out of Bounds Memory access!\n")
         self.memory[mem_addr] = self.signals[1].value
 
     def write_if_en(self):
@@ -331,7 +335,7 @@ class HWModel(metaclass=abc.ABCMeta):
     def update(self, num_steps):
         end_time = num_steps * self.step_time + self.sim_time
         end_time = min(self.get_end_time(), end_time)
-        num_steps = (end_time - self.sim_time) /  self.step_time
+        num_steps = (end_time - self.sim_time) // self.step_time
         for module in self.get_traced_modules():
             module.update(self.sim_time, self.step_time, num_steps)
         self.sim_time = end_time

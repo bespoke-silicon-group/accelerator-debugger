@@ -27,7 +27,8 @@ def main():
         model = ManycoreModel()
         display = ManycoreView(model)
 
-    vcd = VCDData(args.INPUT, siglist=model.get_signal_names())
+    vcd = VCDData(args.INPUT, siglist=model.get_signal_names(),
+                  cached=True)
     model.set_data(vcd)
 
     runtime = Runtime(display, model)

@@ -88,9 +88,10 @@ class InputHandler():
                     return f"Hit end of simulation at time {self.model.sim_time}"
         else:
             self.model.update(num_steps)
-
-        self.display.update()
-        return ""
+            self.display.update()
+            if self.model.sim_time >= self.model.get_end_time():
+                return f"Hit end of simulation at time {self.model.sim_time}"
+            return ""
 
     def parse_info(self, text):
         """ Handle the 'info' command """
