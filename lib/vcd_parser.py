@@ -12,13 +12,13 @@ class VCDParseError(Exception):
 
 
 class VCDData():
-    def __init__(self, filename, siglist=None, cached=False):
+    def __init__(self, filename, siglist=None, cached=False, regen=False):
         self.timescale = None
         self.check_signals(filename, siglist)
 
         if cached:
             cached_fname = filename + ".cached"
-            if os.path.isfile(cached_fname):
+            if os.path.isfile(cached_fname) and not regen:
                 # Load cache file instead of reading vcd data
                 print("Cached data found, loading")
                 with open(cached_fname, "r") as fp:
@@ -27,7 +27,7 @@ class VCDData():
                     self.timescale = cache_dict['timescale']
                     self.endtime = cache_dict['endtime']
             else:
-                print("No cached data found, regenerating")
+                print("Regenerating cached data")
                 self.vcd = self._parse_vcd(filename, only_sigs=False,
                                            siglist=siglist, opt_timescale='')
                 cache_dict = {'vcd' : self.vcd,

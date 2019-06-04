@@ -56,9 +56,6 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
 [ ] Display information as densely as possible (Micheal, Mark disagrees)
 
 ### Stretch
-[ ] We could write the cached database created from VPD into a file; loader
-    checks if JSON or VPD format and either runs `parse_vpd()` or just loads.
-    Add a command line --regen option to force running `parse_vpd()`
 [ ] Hook into ELF file stubs (there's a GNU library for this)
 [ ] Forward search to first don't care signal after reset
 [ ] Convey enums and structs into debugger -- doesn't exist in VCD
