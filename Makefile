@@ -2,12 +2,17 @@ PYPY := pypy
 ifdef PYPY
     PYTHON := $(PYPY)
 else
-    PYTHON := python3
+    PYTHON := pipenv run python3
 endif
 
+DATA := data/splitpacked.vcd
 # all:
 	# pipenv run $(PYTHON) debugger.py data/vcd.vcd manycore
 all:
-	$(PYTHON) debugger.py data/vcd.vcd manycore
+	$(PYTHON) debugger.py $(DATA) manycore
+regen:
+	$(PYTHON) debugger.py --regen $(DATA) manycore
 test:
-	pipenv run $(PYTHON) debugger.py data/ex.vcd test
+	$(PYTHON) debugger.py data/ex.vcd test
+siglist:
+	$(PYTHON) debugger.py $(DATA) manycore --dump-siglist data/splitpacked.siglist

@@ -14,6 +14,9 @@ def main():
     parser = argparse.ArgumentParser(description='VCD Trace Debugger')
     parser.add_argument('--regen', action='store_true', default=False,
                         help='Force regenting parsed VCD data')
+    parser.add_argument('--dump-siglist', action='store',
+                        dest='siglist_dump_file',
+                        help='Dump the list of all signals out to a file')
     parser.add_argument("INPUT", type=str,
                         help="Input VCD file")
     parser.add_argument('MODEL', type=str,
@@ -29,7 +32,8 @@ def main():
         display = ManycoreView(model)
 
     vcd = VCDData(args.INPUT, siglist=model.get_signal_names(),
-                  cached=True, regen=args.regen)
+                  cached=True, regen=args.regen,
+                  siglist_dump_file=args.siglist_dump_file)
     model.set_data(vcd)
 
     runtime = Runtime(display, model)

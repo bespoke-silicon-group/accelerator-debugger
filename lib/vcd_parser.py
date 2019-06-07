@@ -12,8 +12,13 @@ class VCDParseError(Exception):
 
 
 class VCDData():
-    def __init__(self, filename, siglist=None, cached=False, regen=False):
+    def __init__(self, filename, siglist=None, cached=False, regen=False,
+                 siglist_dump_file=None):
         self.timescale = None
+        if siglist_dump_file is not None:
+            self.dump_signal_list(filename, siglist_dump_file)
+            exit(0)
+
         self.check_signals(filename, siglist)
 
         if cached:
@@ -68,17 +73,29 @@ class VCDData():
     def get_symbol(self, name):
         return self.mapping[name]
 
+    def dump_signal_list(self, file, dump_file):
+        vcd = self._parse_vcd(file, only_sigs=1)
+        with open(dump_file, 'w+') as dump_f:
+            for symbol in vcd:
+                heir = vcd[symbol]['nets'][0]['hier']
+                name = vcd[symbol]['nets'][0]['name']
+                dump_f.write(f"{heir}.{name}\n")
+
     def check_signals(self, file, signals):
         """Parse VCD input file and make sure that all signals exist"""
         vcd = self._parse_vcd(file, siglist=signals, only_sigs=1)
         if len(vcd.keys()) != len(signals):
-            print("Key signals")
+            key_signals = []
             for symbol in vcd:
                 heir = vcd[symbol]['nets'][0]['hier']
                 name = vcd[symbol]['nets'][0]['name']
-                print(heir + '.' + name)
-            print("\nModel Signals")
+                key_signals.append(f"{heir}.{name}")
+            model_signals = signals.copy()
             for signal in signals:
+                if signal in key_signals:
+                    model_signals.remove(signal)
+            print("\nDidn't find following signals")
+            for signal in model_signals:
                 print(signal)
             raise ValueError("Not all signals found")
 
