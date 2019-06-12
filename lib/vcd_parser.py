@@ -53,6 +53,7 @@ class VCDData():
 
     def get_value(self, symbol, time):
         # TODO This could be sped up by saving a pointer to the last time
+        #  but we'd need to change some things so that rsteps still worked
         signal = self.vcd[symbol]
         curr_value = None
         value_time = -1
@@ -68,6 +69,17 @@ class VCDData():
         for (tv_time, tv_val) in signal['tv']:
             if tv_time > curr_time:
                 return (tv_time, tv_val)
+        return None
+
+    def get_prev_change(self, symbol, curr_time):
+        signal = self.vcd[symbol]
+        curr_value = None
+        value_time = -1
+        for (tv_time, tv_val) in signal['tv']:
+            if tv_time < curr_time:
+                curr_value, value_time = tv_val, tv_time
+            elif tv_time >= curr_time:
+                return (value_time, curr_value)
         return None
 
     def get_symbol(self, name):

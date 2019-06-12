@@ -152,6 +152,11 @@ class BasicModule(HWModule):
         for signal in self.get_signals():
             signal.value = Value(self.data.get_value(signal.symbol, new_time))
 
+    def rupdate(self, curr_time, step_time, num_steps):
+        new_time = curr_time - (step_time * num_steps)
+        for signal in self.get_signals():
+            signal.value = Value(self.data.get_value(signal.symbol, new_time))
+
 
 class Memory(HWModule):
     """A memory traces when writes occur based on the enable signal.
@@ -273,6 +278,46 @@ class Memory(HWModule):
                 # Perform write
                 self.write()
 
+    def _get_last_write_value(self, curr_time, write_addr):
+        """Get the last data written to write_addr strictly before curr_time"""
+        assert isinstance(write_addr, int)
+        enable = self.signals[2]
+        addr = self.signals[0]
+        wdata = self.signals[1]
+        while curr_time > 0:
+            prev_change = self.data.get_prev_change(enable.symbol, curr_time)
+            if prev_change is None:
+                return None
+            change_time, change_val = prev_change
+            change_addr = Value(self.data.get_value(addr.symbol, change_time))
+            if change_addr.as_int == write_addr:
+                return Value(self.data.get_value(wdata.symbol, change_time))
+            curr_time = change_time
+        return Value('xx')
+
+
+    def rupdate(self, curr_time, step_time, num_steps):
+        enable = self.signals[2]
+        addr = self.signals[0]
+        wdata = self.signals[1]
+        new_time = curr_time - (step_time * num_steps)
+        while new_time < curr_time:
+            prev_change = self.data.get_prev_change(enable.symbol, curr_time)
+            if prev_change is None:
+                return
+            curr_time = prev_change[0]
+            enable.value = Value(prev_change[1])
+            if new_time <= curr_time and self.is_enable():
+                # Search back to find the last value written to current addr
+                for sig in self.signals[:2]:
+                    sig.value = Value(self.data.get_value(sig.symbol, curr_time))
+                int_addr = self.signals[0].value.as_int
+                # Search backwards to find the last write to given addr
+                wdata.value = self._get_last_write_value(curr_time, int_addr)
+                self.write()
+            else:
+                for sig in self.signals[:2]:
+                    sig.value = Value(self.data.get_value(sig.symbol, new_time))
 
 class HWModel(metaclass=abc.ABCMeta):
     def __init__(self):
@@ -332,11 +377,20 @@ class HWModel(metaclass=abc.ABCMeta):
         for module in self.get_traced_modules():
             module.set_data(data)
 
-    def update(self, num_steps):
+    def update(self, num_steps, forward=True):
         end_time = num_steps * self.step_time + self.sim_time
         end_time = min(self.get_end_time(), end_time)
         num_steps = (end_time - self.sim_time) // self.step_time
         for module in self.get_traced_modules():
             module.update(self.sim_time, self.step_time, num_steps)
+        self.sim_time = end_time
+        return self.sim_time
+
+    def rupdate(self, num_steps):
+        end_time = self.sim_time - (num_steps * self.step_time)
+        end_time = max(0, end_time)
+        num_steps = (self.sim_time - end_time) // self.step_time
+        for module in self.get_traced_modules():
+            module.rupdate(self.sim_time, self.step_time, num_steps)
         self.sim_time = end_time
         return self.sim_time

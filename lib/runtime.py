@@ -16,7 +16,7 @@ from prompt_toolkit.layout.menus import CompletionsMenu
 import prompt_toolkit.layout.containers as pt_containers
 
 COMMANDS = ['step', 'info', 'list', 'time', 'help', 'breakpoint', 'lsbrk',
-            'delete', 'run', 'clear']
+            'delete', 'run', 'clear', 'rstep']
 
 
 class ModuleCompleter(Completer):
@@ -92,6 +92,15 @@ class InputHandler():
             if self.model.sim_time >= self.model.get_end_time():
                 return f"Hit end of simulation at time {self.model.sim_time}"
             return ""
+
+    def parse_rstep(self, text):
+        if len(text) == 2:
+            num_steps = int(text[1])
+        else:
+            num_steps = 1
+        self.model.rupdate(num_steps)
+        self.display.update()
+        return ""
 
     def parse_info(self, text):
         """ Handle the 'info' command """
@@ -180,6 +189,8 @@ class InputHandler():
                 out_text = self.parse_info(text)
             elif text[0] == 'step' or text[0] == 's':
                 out_text = self.parse_step(text)
+            elif text[0] == 'rstep' or text[0] == 'rs':
+                out_text = self.parse_rstep(text)
             elif text[0] == 'time':
                 out_text = self.get_time_str()
             elif text[0] == 'breakpoint' or text[0] == 'b':
