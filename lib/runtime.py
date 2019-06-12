@@ -65,6 +65,8 @@ class InputHandler():
             self.bkpt_namespace[module.get_name()] = module.get_signal_dict()
         self.breakpoints = []
         self.next_bkpt_num = 0
+        self.last_text = []
+
 
     def parse_step(self, text):
         """ Handle the 'step' command """
@@ -178,7 +180,11 @@ class InputHandler():
         out_text = ""
         text = self.input_field.text.strip().split()
         if not text:
-            return
+            # Empty text (user pressed enter on empty prompt)
+            if self.last_text:
+                text = self.last_text
+            else:
+                return
         try:
             if text[0] == 'list':
                 for module in self.model.get_traced_modules():
@@ -207,6 +213,7 @@ class InputHandler():
                 raise InputException("Invalid Command!")
         except InputException as exception:
             out_text = f"ERROR: {str(exception)}"
+        self.last_text = text
 
         self.command_output.text = out_text
 
