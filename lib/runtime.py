@@ -35,7 +35,7 @@ class ModuleCompleter(Completer):
         words = COMMANDS
         if (num_words > 1 and typed[0] == 'info') or (text == 'info'):
             words = self.module_names
-        elif num_words == 1 and typed[0] in COMMANDS:
+        elif num_words == 1 and (typed[0] in COMMANDS or text in COMMANDS):
             words = []
 
         word_before_cursor = document.get_word_before_cursor(WORD=False)
@@ -88,12 +88,12 @@ class InputHandler():
                 if sim_time >= self.model.get_end_time():
                     self.display.update()
                     return f"Hit end of simulation at time {self.model.sim_time}"
-        else:
-            self.model.update(num_steps)
-            self.display.update()
-            if self.model.sim_time >= self.model.get_end_time():
-                return f"Hit end of simulation at time {self.model.sim_time}"
             return ""
+        self.model.update(num_steps)
+        self.display.update()
+        if self.model.sim_time >= self.model.get_end_time():
+            return f"Hit end of simulation at time {self.model.sim_time}"
+        return ""
 
     def parse_rstep(self, text):
         if len(text) == 2:
@@ -124,7 +124,7 @@ class InputHandler():
             current_cond = eval(condition, {}, self.bkpt_namespace)
         except:
             raise InputException("Invalid breakpoint condition!")
-        if type(current_cond) != bool:
+        if not isinstance(current_cond, bool):
             raise InputException("Breakpoint condition not boolean!")
 
         bkpt_num = self.next_bkpt_num
@@ -162,6 +162,7 @@ class InputHandler():
     @staticmethod
     def help_text():
         htext = "HELP:\n    step <n>: Step the simulation n times\n"
+        htext += "    rstep <n>: Step the simulation backwards n times\n"
         htext += "    info <module_name>: Print the status of a given module\n"
         htext += "    time: Print the current simulation time\n"
         htext += "    breakpoint <cond>: Set a breakpoint for a given condition\n"

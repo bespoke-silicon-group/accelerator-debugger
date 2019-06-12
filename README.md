@@ -48,7 +48,7 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
 ### TODO
 [ ] Minor refactor with @property
 [ ] Reverse Execution
-    [ ] rstep (default 1, takes n)
+    [x] rstep (default 1, takes n)
     [ ] go <time> (go to specified time)
 [ ] Always show simulation time to right of command bar (as rprompt)
 [ ] When instantiating module, SW dev can decide what signals to include
