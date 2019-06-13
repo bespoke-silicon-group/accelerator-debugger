@@ -7,6 +7,7 @@ With some adaptations added after the fact.
 import re
 import os.path
 import json
+from collections import namedtuple
 
 class VCDParseError(Exception):
     """our local exception for VCD parsing errors (inherited from Exception)"""
@@ -17,6 +18,7 @@ class VCDData():
     def __init__(self, filename, siglist=None, cached=False, regen=False,
                  siglist_dump_file=None):
         self.timescale = None
+        self.Change = namedtuple("Change", "time val")
         if siglist_dump_file is not None:
             self.dump_signal_list(filename, siglist_dump_file)
             exit(0)
@@ -73,7 +75,7 @@ class VCDData():
         signal = self.vcd[sig.symbol]
         for (tv_time, tv_val) in signal['tv']:
             if tv_time > curr_time:
-                return (tv_time, tv_val)
+                return self.Change(tv_time, tv_val)
         return None
 
     def get_prev_change(self, sig, curr_time):
@@ -86,7 +88,7 @@ class VCDData():
             if tv_time < curr_time:
                 curr_value, value_time = tv_val, tv_time
             elif tv_time >= curr_time:
-                return (value_time, curr_value)
+                return self.Change(value_time, curr_value)
         return None
 
     def get_symbol(self, sig_name):

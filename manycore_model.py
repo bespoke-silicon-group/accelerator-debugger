@@ -1,12 +1,11 @@
 #! /usr/bin/env python3
 
 from lib.hw_models import HWModel, BasicModule, Memory
-from lib.view import *
-
+from lib.view import HSplit, VSplit, View, Display
 
 class ManycoreModel(HWModel):
     def __init__(self):
-        self.modules = []
+        super(ManycoreModel, self).__init__(20)
         r0_data_signals = []
         for i in range(2):
             for j in range(2):
@@ -16,13 +15,13 @@ class ManycoreModel(HWModel):
                 addr = header + "rf_wa[4:0]"
                 wdata = header + "rf_wd[31:0]"
                 wen = header + "rf_wen"
-                self.modules.append(Memory(f"rf_{i}_{j}", addr, wdata, wen,
-                                           True, size=32,
-                                           segments=['a', 'b', '17', '18'],
-                                           show_signals=False))
+                self.add_module(Memory(f"rf_{i}_{j}", addr, wdata, wen,
+                                       True, size=32,
+                                       segments=['a', 'b', '17', '18'],
+                                       show_signals=False))
                 inst_sigs = []
                 inst_sigs.append(header + "exe.pc_plus4[31:0]")
-                self.modules.append(BasicModule(f"inst_{i}_{j}", inst_sigs))
+                self.add_module(BasicModule(f"inst_{i}_{j}", inst_sigs))
 
                 addr = header + 'to_mem_o.addr[31:0]'
                 wdata = header + 'to_mem_o.payload.write_data[31:0]'
@@ -30,7 +29,7 @@ class ManycoreModel(HWModel):
                 isstr = header + 'mem.decode.is_store_op'
                 stall = header + 'stall'
                 mem_sigs = [addr, wdata, isload, isstr, stall]
-                self.modules.append(BasicModule(f"wmem_{i}_{j}", mem_sigs))
+                self.add_module(BasicModule(f"wmem_{i}_{j}", mem_sigs))
 
                 header = f"test_bsg_manycore.UUT.y[{i+1}].x[{j}].tile."
                 header += "proc.h.z."
@@ -40,19 +39,10 @@ class ManycoreModel(HWModel):
                 x = header + 'data_o_debug.y_cord[1:0]'
                 y = header + 'data_o_debug.x_cord[0:0]'
                 remote_sigs = [lout, addr, data, x, y]
-                self.modules.append(BasicModule(f"remote_{i}_{j}",
-                                                remote_sigs))
+                self.add_module(BasicModule(f"remote_{i}_{j}",
+                                            remote_sigs))
 
-        self.modules.append(BasicModule("r0_data", r0_data_signals))
-        super(ManycoreModel, self).__init__()
-
-    def get_traced_modules(self):
-        return self.modules
-
-    @property
-    def step_time(self):
-        return 20
-
+        self.add_module(BasicModule("r0_data", r0_data_signals))
 
 class ManycoreView(Display):
     def gen_top_view(self, model):
@@ -80,4 +70,3 @@ class ManycoreView(Display):
                        VSplit(insts[3], wmem[3])))
         )
         return regs
-

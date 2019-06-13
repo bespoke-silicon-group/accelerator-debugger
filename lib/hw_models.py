@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 
-import abc
+from collections import namedtuple
 
 class AttrDict(dict):
     def __init__(self, *args, **kwargs):
@@ -81,7 +81,7 @@ class Signal():
     the name of the signal in the HW module that's it's part of, and
     its current value"""
     def __init__(self, sig_name, vcd_data):
-        self.symbol = vcd_data.get_symbol(sig_name)
+        self._symbol = vcd_data.get_symbol(sig_name)
         self.name = sig_name
         self.value = Value(vcd_data.get_value(self, 0))
 
@@ -101,7 +101,7 @@ class Signal():
         return str(self) + " " + self.symbol
 
 
-class HWModule(metaclass=abc.ABCMeta):
+class HWModule():
     """ Signals are tuples of (global_symbol, name_in_module, value) """
     def __init__(self, module_name, signal_names):
         self.signal_names = signal_names
@@ -185,11 +185,13 @@ class Memory(HWModule):
         else:
             self.memory = {}
         self.segments = segments
+        Segment = namedtuple("Segment", 'start end')
         for i, segment in enumerate(self.segments):
             if isinstance(segment, tuple):
-                self.segments[i] = (int(segment[0], 16), int(segment[1], 16))
+                start, end = (int(segment[0], 16), int(segment[1], 16))
             else:
-                self.segments[i] = (int(segment, 16), int(segment, 16))
+                start, end = (int(segment, 16), int(segment, 16))
+            self.segments[i] = Segment(start, end)
         self.enable_level = bool(enable_level)
         self.show_signals = show_signals
 
@@ -211,7 +213,7 @@ class Memory(HWModule):
         if not self.segments:
             return True
         for segment in self.segments:
-            if segment[0] <= addr <= segment[1]:
+            if segment.start <= addr <= segment.end:
                 return True
         return False
 
@@ -281,8 +283,8 @@ class Memory(HWModule):
             next_change = self.data.get_next_change(self.enable, curr_time)
             if next_change is None:
                 return
-            curr_time = next_change[0]
-            self.enable.value = Value(next_change[1])
+            curr_time = next_change.time
+            self.enable.value = Value(next_change.val)
             if self.is_enable():
                 # Update addr and data
                 self.addr.value = Value(self.data.get_value(self.addr,
@@ -313,8 +315,8 @@ class Memory(HWModule):
             prev_change = self.data.get_prev_change(self.enable, curr_time)
             if prev_change is None:
                 return
-            curr_time = prev_change[0]
-            self.enable.value = Value(prev_change[1])
+            curr_time = prev_change.time
+            self.enable.value = Value(prev_change.val)
             if new_time <= curr_time and self.is_enable():
                 # Search back to find the last value written to current addr
                 for sig in self.signals[:2]:
@@ -328,11 +330,13 @@ class Memory(HWModule):
                 for sig in self.signals[:2]:
                     sig.value = Value(self.data.get_value(sig, new_time))
 
-class HWModel(metaclass=abc.ABCMeta):
-    def __init__(self):
+class HWModel():
+    def __init__(self, step_time):
         self.data = None
         self.time = 0
         self.end_time = None
+        self._step_time = step_time
+        self.modules = []
 
     def get_traced_signals(self):
         signals = []
@@ -346,6 +350,9 @@ class HWModel(metaclass=abc.ABCMeta):
             names.extend(module.get_signal_names())
         return names
 
+    def add_module(self, module):
+        self.modules.append(module)
+
     @property
     def sim_time(self):
         return self.time
@@ -354,13 +361,12 @@ class HWModel(metaclass=abc.ABCMeta):
     def sim_time(self, value):
         self.time = value
 
-    @abc.abstractmethod
     def get_traced_modules(self):
-        raise NotImplementedError
+        return self.modules
 
     @property
     def step_time(self):
-        raise NotImplementedError
+        return self._step_time
 
     def get_end_time(self):
         return self.end_time
