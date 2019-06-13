@@ -1,17 +1,19 @@
-# This is a manual translation, from perl to python, of :
-# http://cpansearch.perl.org/src/GSULLIVAN/Verilog-VCD-0.03/lib/Verilog/VCD.pm
+"""
+This is a manual translation, from perl to python, of:
+ http://cpansearch.perl.org/src/GSULLIVAN/Verilog-VCD-0.03/lib/Verilog/VCD.pm
+With some adaptations added after the fact.
+"""
 
 import re
 import os.path
 import json
 
-
-# our local exception for VCD parsing errors (inherited from Exception)
 class VCDParseError(Exception):
-    pass
+    """our local exception for VCD parsing errors (inherited from Exception)"""
 
 
 class VCDData():
+    """Class to act as a container, parser, and cache"""
     def __init__(self, filename, siglist=None, cached=False, regen=False,
                  siglist_dump_file=None):
         self.timescale = None
@@ -26,8 +28,8 @@ class VCDData():
             if os.path.isfile(cached_fname) and not regen:
                 # Load cache file instead of reading vcd data
                 print("Cached data found, loading")
-                with open(cached_fname, "r") as fp:
-                    cache_dict = json.load(fp)
+                with open(cached_fname, "r") as cfile:
+                    cache_dict = json.load(cfile)
                     self.vcd = cache_dict['vcd']
                     self.timescale = cache_dict['timescale']
                     self.endtime = cache_dict['endtime']
@@ -38,8 +40,8 @@ class VCDData():
                 cache_dict = {'vcd' : self.vcd,
                               'endtime': self.endtime,
                               'timescale': self.timescale}
-                with open(cached_fname, 'w+') as fp:
-                    json.dump(cache_dict, fp)
+                with open(cached_fname, 'w+') as cfile:
+                    json.dump(cache_dict, cfile)
                 print("Data generated and cached!")
         else:
             self.vcd = self._parse_vcd(filename, only_sigs=False,
@@ -51,10 +53,11 @@ class VCDData():
             for net in nets:
                 self.mapping[net['hier']+'.'+net['name']] = k
 
-    def get_value(self, symbol, time):
+    def get_value(self, sig, time):
+        """Gets the value of sig at the given time"""
         # TODO This could be sped up by saving a pointer to the last time
         #  but we'd need to change some things so that rsteps still worked
-        signal = self.vcd[symbol]
+        signal = self.vcd[sig.symbol]
         curr_value = None
         value_time = -1
         for (tv_time, tv_val) in signal['tv']:
@@ -64,15 +67,19 @@ class VCDData():
                 break
         return curr_value
 
-    def get_next_change(self, symbol, curr_time):
-        signal = self.vcd[symbol]
+    def get_next_change(self, sig, curr_time):
+        """Returns a (time, value) tuple that describes the next change for
+        sig after curr_time. Returns None if a next change doesn't exist"""
+        signal = self.vcd[sig.symbol]
         for (tv_time, tv_val) in signal['tv']:
             if tv_time > curr_time:
                 return (tv_time, tv_val)
         return None
 
-    def get_prev_change(self, symbol, curr_time):
-        signal = self.vcd[symbol]
+    def get_prev_change(self, sig, curr_time):
+        """Returns a (time, value) tuple that describes the previous change for
+        sig before curr_time. Returns None if a change doesn't exist"""
+        signal = self.vcd[sig.symbol]
         curr_value = None
         value_time = -1
         for (tv_time, tv_val) in signal['tv']:
@@ -82,10 +89,12 @@ class VCDData():
                 return (value_time, curr_value)
         return None
 
-    def get_symbol(self, name):
-        return self.mapping[name]
+    def get_symbol(self, sig_name):
+        """Gets the VCD symbol associated with sig_name"""
+        return self.mapping[sig_name]
 
     def dump_signal_list(self, file, dump_file):
+        """Dumps list of all signals in <file> into <dump_file>"""
         vcd = self._parse_vcd(file, only_sigs=1)
         with open(dump_file, 'w+') as dump_f:
             for symbol in vcd:
