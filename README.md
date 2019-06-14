@@ -50,7 +50,7 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
 [ ] Reverse Execution
     [x] rstep (default 1, takes n)
     [ ] go <time> (go to specified time)
-[ ] Always show simulation time to right of command bar (as rprompt)
+[x] Always show simulation time to right of command bar (as rprompt)
 [ ] When instantiating module, SW dev can decide what signals to include
    (by default, includes all)
 [ ] Display information as densely as possible (Micheal, Mark disagrees)

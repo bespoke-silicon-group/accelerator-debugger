@@ -49,15 +49,17 @@ class ModuleCompleter(Completer):
                 yield Completion(word, -len(word_before_cursor),
                                  display_meta=display_meta)
 
+
 class InputException(Exception):
     """Custom exception to throw when we find invalid user input"""
 
 
 class InputHandler():
     """ Handle input from the user, throwing errors as necessary """
-    def __init__(self, input_field, command_output, model, display):
-        self.input_field = input_field
-        self.command_output = command_output
+    def __init__(self, input_field, output, time_field, model, display):
+        self.input = input_field
+        self.output = output
+        self.time_field = time_field
         self.model = model
         self.display = display
         self.bkpt_namespace = {}
@@ -67,7 +69,6 @@ class InputHandler():
         self.next_bkpt_num = 0
         self.last_text = []
 
-
     def parse_step(self, text):
         """ Handle the 'step' command """
         if len(text) == 2:
@@ -75,7 +76,7 @@ class InputHandler():
         else:
             num_steps = 1
         if self.breakpoints:
-            for step in range(num_steps):
+            while num_steps > 0:
                 self.model.step()
                 sim_time = self.model.sim_time
                 for module in self.model.get_traced_modules():
@@ -87,7 +88,8 @@ class InputHandler():
                         return f"Hit breakpoint {num} at time {sim_time}"
                 if sim_time >= self.model.get_end_time():
                     self.display.update()
-                    return f"Hit end of simulation at time {self.model.sim_time}"
+                    return f"Hit simulation end at time {self.model.sim_time}"
+                num_steps -= 1
             return ""
         self.model.update(num_steps)
         self.display.update()
@@ -96,6 +98,7 @@ class InputHandler():
         return ""
 
     def parse_rstep(self, text):
+        """ Handle the 'rstep' and 'rs' commands -- reverse step"""
         if len(text) == 2:
             num_steps = int(text[1])
         else:
@@ -115,14 +118,13 @@ class InputHandler():
         return f"{str(req_module[0])}\n"
 
     def parse_breakpoint(self, text):
+        """ Handle the 'breakpoint' command """
         if len(text) <= 1:
             raise InputException("Breakpoint takes a condition")
         condition = " ".join(text[1:])
-        # Convert commonly used C expressions to python, != is hard though
-        modules = self.model.get_traced_modules()
         try:
             current_cond = eval(condition, {}, self.bkpt_namespace)
-        except:
+        except:  # Bare except, since this is literally a catch-all
             raise InputException("Invalid breakpoint condition!")
         if not isinstance(current_cond, bool):
             raise InputException("Breakpoint condition not boolean!")
@@ -132,13 +134,15 @@ class InputHandler():
         self.breakpoints.append((bkpt_num, condition))
         return f"Breakpoint {bkpt_num}: {condition}"
 
-    def lsbrk(self, text):
+    def lsbrk(self, _):
+        """ Handle the lsbrk command -- list breakpoints """
         out_text = ""
         for bkpt_num, condition in self.breakpoints:
             out_text += f"Breakpoint {bkpt_num}: {condition}\n"
         return out_text[:-1]  # Strip final newline
 
     def delete(self, text):
+        """ Handle the delete command -- delete breakpoint """
         if len(text) <= 1:
             raise InputException("Need to provide a breakpoint number!")
         bkpt_num = int(text[1])
@@ -149,6 +153,7 @@ class InputHandler():
         raise InputException(f"Breakpoint {bkpt_num} not found!")
 
     def run(self, text):
+        """ Handle the run command -- forward execution to a given time """
         curr_time = self.model.sim_time
         if len(text) == 1:  # Run until breakpoint or finish
             end_time = self.model.end_time
@@ -159,13 +164,22 @@ class InputHandler():
         steps = (end_time - curr_time) // self.model.step_time
         return self.parse_step(f"step {steps}".split())
 
+    def parse_list(self, _):
+        """ Handle the list command -- list all modules """
+        out_text = ""
+        for module in self.model.get_traced_modules():
+            out_text += f"* {module.get_name()}\n"
+        return out_text
+
     @staticmethod
     def help_text():
+        """Get the help text -- handle the 'help' command """
         htext = "HELP:\n    step <n>: Step the simulation n times\n"
         htext += "    rstep <n>: Step the simulation backwards n times\n"
         htext += "    info <module_name>: Print the status of a given module\n"
         htext += "    time: Print the current simulation time\n"
-        htext += "    breakpoint <cond>: Set a breakpoint for a given condition\n"
+        htext += "    breakpoint <cond>: Set a breakpoint given a condition\n"
+        htext += "       breakpoint conditions are written in Python syntax\n"
         htext += "    lsbrk: List set breakpoints\n"
         htext += "    delete <num>: Delete a breakpoint, specified by number\n"
         htext += "    run <time>: Run simulation until a specified time\n"
@@ -174,12 +188,13 @@ class InputHandler():
         return htext
 
     def get_time_str(self):
+        """ Handle the 'time' command -- print current simulation time """
         return str(self.model.sim_time)
 
     def accept(self, _):
         """ Handle user input """
         out_text = ""
-        text = self.input_field.text.strip().split()
+        text = self.input.text.strip().split()
         if not text:
             # Empty text (user pressed enter on empty prompt)
             if self.last_text:
@@ -188,8 +203,7 @@ class InputHandler():
                 return
         try:
             if text[0] == 'list':
-                for module in self.model.get_traced_modules():
-                    out_text += f"* {module.get_name()}\n"
+                out_text = self.parse_list(text)
             elif text[0] == 'help':
                 out_text = self.help_text()
             elif text[0] == 'info':
@@ -215,8 +229,9 @@ class InputHandler():
         except InputException as exception:
             out_text = f"ERROR: {str(exception)}"
         self.last_text = text
+        self.time_field.text = "Time: " + self.get_time_str()
 
-        self.command_output.text = out_text
+        self.output.text = out_text
 
 
 class Runtime():
@@ -226,31 +241,41 @@ class Runtime():
         self.model = model
         self.display = display
 
-    def start(self):
-        """Start the debugger: initialize the display and run"""
+    def create_windows(self):
+        """Create all the windows of the display (input, output, debugger,
+        text completer)"""
         module_names = [m.get_name() for m in self.model.get_traced_modules()]
         search_field = SearchToolbar()
+        # Generate the input text area
         input_field = TextArea(prompt='> ', style='class:arrow',
                                completer=ModuleCompleter(module_names),
                                search_field=search_field,
                                height=1,
                                multiline=False, wrap_lines=True)
 
-        # output_field = TextArea(text="")
+        # Field to show current time
+        end_time = self.model.get_end_time()
+        time_field = TextArea(text="Time: " + str(self.model.sim_time),
+                              style='class:rprompt',
+                              height=1,
+                              width=len(str(end_time)) + 7,
+                              multiline=False)
+
         command_output = Label(text="")
         self.display.update()
-        handler = InputHandler(input_field, command_output,
+        handler = InputHandler(input_field, command_output, time_field,
                                self.model, self.display)
 
+        # Create container with display window and input text area
         container = pt_containers.HSplit([
             self.display.get_top_view(),
-            # output_field,
             pt_containers.Window(height=1, char='-'),
             command_output,
-            input_field,
+            pt_containers.VSplit([input_field, time_field]),
             search_field
         ])
 
+        # Floating menu for text completion
         completion_menu = CompletionsMenu(max_height=5, scroll_offset=1)
         body = pt_containers.FloatContainer(
             content=container,
@@ -259,11 +284,16 @@ class Runtime():
                                     ycursor=True,
                                     content=completion_menu)])
 
-
         input_field.accept_handler = handler.accept
+        return (body, input_field)
+
+    def start(self):
+        """Start the debugger: initialize the display and run"""
+        body, input_field = self.create_windows()
 
         style = Style([
-            ('arrow', '#00aa00')
+            ('arrow', '#00aa00'),
+            ('rprompt', 'bg:#c000c0 #ffffff')
         ])
 
         bindings = KeyBindings()
