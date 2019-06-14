@@ -43,22 +43,21 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
 * Could implement with eval(), but language of condition needs to be python
     * This can be fix with a couple find-replaces
     * Can be sped up with `compiler.compile()`
-* Currently fails because signal values are strings instead of numbers
 
 ### TODO
-[ ] Minor refactor with @property
-[ ] Reverse Execution
-    [x] rstep (default 1, takes n)
-    [ ] go <time> (go to specified time)
+[ ] go <time> (go to specified time, ignoring breakpoints)
+[ ] Refactor on lib/hw_models.py for pylint
 [x] Always show simulation time to right of command bar (as rprompt)
-[ ] When instantiating module, SW dev can decide what signals to include
-   (by default, includes all)
 [ ] Display information as densely as possible (Micheal, Mark disagrees)
+    [ ] Align text on colon
+    [ ] Standardized tab spacing
+[ ] Speed up breakpoints with compiler.compile()
 
 ### Stretch
 [ ] Hook into ELF file stubs (there's a GNU library for this)
-[ ] Forward search to first don't care signal after reset
-[ ] Convey enums and structs into debugger -- doesn't exist in VCD
+[ ] When instantiating module, SW dev can decide what signals to include
+   (by default, includes all)
+[ ] Parse AST to see what vars breakpoints depends on
 
 ## Debugging The Manycore
 * Register files (but maybe only some registers)
