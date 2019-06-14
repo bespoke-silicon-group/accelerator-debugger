@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
-
-# Eventually, assign HW modules to panels, update panels in parallel
+""" Top-level file for the Visual Debugger, parses command line options and
+    starts the display for a given model
+"""
 
 import argparse
 from lib.vcd_parser import VCDData

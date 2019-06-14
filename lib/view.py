@@ -1,10 +1,11 @@
+"""Classes for describing debugging views and window splits """
 import prompt_toolkit.layout.containers as pt_containers
 from prompt_toolkit.document import Document
 from prompt_toolkit.widgets import TextArea
 
 
 class HSplit(pt_containers.HSplit):
-    """Container class for Horizontal Splits that contains Views"""
+    """Container class for Horizontal Window Splits that contains Views"""
     def __init__(self, top, bottom):
         valid = [False, False]
         for valid_type in [View, HSplit, VSplit]:
@@ -31,7 +32,7 @@ class HSplit(pt_containers.HSplit):
 
 
 class VSplit(pt_containers.VSplit):
-    """Container class for Vertical Splits that contains Views"""
+    """Container class for Vertical Window Splits that contains Views"""
     def __init__(self, left, right):
         valid = [False, False]
         for valid_type in [View, HSplit, VSplit]:
@@ -58,11 +59,11 @@ class VSplit(pt_containers.VSplit):
 
 
 class View(TextArea):
-    """ Wraps a hardware module into a Container that can be displayed"""
+    """ Wraps a hardware module into a Container that can be displayed as a
+    window """
     def __init__(self, module):
         self.module = module
         TextArea.__init__(self, text="")
-
 
     def update(self):
         """Update this view and all subviews"""
@@ -76,7 +77,7 @@ class Display():
         self.top_view = self.gen_top_view(model)
 
     def gen_top_view(self, model):
-        """ Subclass implement this -- build the top-level view out of
+        """ Subclass implements this -- build the top-level view out of
         HSplits, VSplits, and Views"""
         raise NotImplementedError
 
