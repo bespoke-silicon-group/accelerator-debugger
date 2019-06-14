@@ -1,9 +1,14 @@
 #! /usr/bin/env python3
 
+"""Back-end for the debugger. Hardware Models (HWModel) are composed of
+Hardware Modules (HWModule), which are composed of Signals, which have a
+Value"""
+
 from collections import namedtuple
 
 
 class AttrDict(dict):
+    """Dictionary where values can be accessed via dict.key_name"""
     def __init__(self, *args, **kwargs):
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__ = self
@@ -15,21 +20,27 @@ class Value():
     number into integers that we can"""
     def __init__(self, value):
         self.value = value.lower()
-        self.hex_str, self.int_val = self.val_to_hex()
+        self.hex_str, self.int_val = self._val_to_hex()
 
     @property
     def as_int(self):
+        """Return the integer value, None if the Value doesn't have an integer
+        representation"""
         return self.int_val
 
     @property
     def as_hex(self):
+        """Return the hexadecimal representation of this Value"""
         return self.hex_str
 
     @property
     def as_str(self):
+        """Returns the VCD string representation of this Value"""
         return self.value
 
-    def val_to_hex(self):
+    def _val_to_hex(self):
+        """Generate the hexadecimal and integer representations of this
+        Value"""
         hex_num = ""
         # Translate number in chunks of 4
         num_len = len(self.value)
@@ -92,6 +103,7 @@ class Signal():
 
     @property
     def symbol(self):
+        """Get the VCD symbol corresponding to this signal"""
         return self._symbol
 
     @symbol.setter
@@ -105,62 +117,84 @@ class Signal():
 class HWModule():
     """ Signals are tuples of (global_symbol, name_in_module, value) """
     def __init__(self, module_name, signal_names):
-        self.signal_names = signal_names
-        self.name = module_name
-        self.signals = []
+        self._signal_names = signal_names
+        self._name = module_name
+        self._signals = []
         self.data = None
 
-    def get_signal_names(self):
-        return self.signal_names
+    @property
+    def signal_names(self):
+        """The names of signals tracked by this Module"""
+        return self._signal_names
 
-    def get_signals(self):
-        return self.signals
+    @property
+    def signals(self):
+        """The signals tracked by this Module"""
+        return self._signals
 
-    def get_signal_dict(self):
+    @property
+    def signal_dict(self):
+        """Get a dictionary of signal_name: value"""
         raise NotImplementedError
 
-    def get_name(self):
-        return self.name
+    @property
+    def name(self):
+        """The name of this module"""
+        return self._name
 
     def set_data(self, data):
+        """Set the VCD data that this module should use as a backend"""
         self.data = data
         for sig_name in self.signal_names:
-            self.signals.append(Signal(sig_name, data))
+            self._signals.append(Signal(sig_name, data))
 
     def __str__(self):
         raise NotImplementedError
 
     def step(self, curr_time, step_time):
+        """Step the module, given the current simulation time and the time
+        length of a step"""
+        raise NotImplementedError
+
+    def update(self, curr_time, step_time, num_steps):
+        """Update this module to curr_time + step_time * num_steps"""
+        raise NotImplementedError
+
+    def rupdate(self, curr_time, step_time, num_steps):
+        """Update this module to curr_time - step_time * num_steps"""
         raise NotImplementedError
 
 
 class BasicModule(HWModule):
+    """A module with plain signals that don't have side effects (i.e. not
+    memory signals"""
     def __str__(self):
-        desc = self.get_name() + ": "
-        for signal in self.get_signals():
+        desc = self.name + ": "
+        for signal in self.signals:
             desc += f"\n    {str(signal)}"
         return desc
 
-    def get_signal_dict(self):
+    @property
+    def signal_dict(self):
         signal_dict = {}
-        for signal in self.get_signals():
+        for signal in self.signals:
             short_name = signal.name.split('.')[-1]
             signal_dict[short_name] = signal.value
         return AttrDict(signal_dict)
 
     def step(self, curr_time, step_time):
         new_time = curr_time + step_time
-        for signal in self.get_signals():
+        for signal in self.signals:
             signal.value = Value(self.data.get_value(signal, new_time))
 
     def update(self, curr_time, step_time, num_steps):
         new_time = curr_time + step_time * num_steps
-        for signal in self.get_signals():
+        for signal in self.signals:
             signal.value = Value(self.data.get_value(signal, new_time))
 
     def rupdate(self, curr_time, step_time, num_steps):
         new_time = curr_time - (step_time * num_steps)
-        for signal in self.get_signals():
+        for signal in self.signals:
             signal.value = Value(self.data.get_value(signal, new_time))
 
 
@@ -200,14 +234,17 @@ class Memory(HWModule):
 
     @property
     def addr(self):
+        """The address signal for this memory"""
         return self.signals[0]
 
     @property
     def wdata(self):
+        """The write data signal for this memory"""
         return self.signals[1]
 
     @property
     def enable(self):
+        """The enable signal for this memory"""
         return self.signals[2]
 
     def addr_in_range(self, addr):
@@ -220,9 +257,10 @@ class Memory(HWModule):
                 return True
         return False
 
-    def get_signal_dict(self):
+    @property
+    def signal_dict(self):
         signal_dict = {}
-        for signal in self.get_signals():
+        for signal in self.signals:
             short_name = signal.name.split('.')[-1]
             signal_dict[short_name] = signal.value
         signal_dict.update(self.memory)
@@ -230,6 +268,8 @@ class Memory(HWModule):
 
     @staticmethod
     def print_mem_table(seq, columns=2):
+        """Print a table of memory values as a table with a fixed number of
+        columns"""
         table = ''
         col_height = len(seq) // columns
         for row in range(col_height):
@@ -241,9 +281,9 @@ class Memory(HWModule):
         return table
 
     def __str__(self):
-        desc = self.get_name() + ": "
+        desc = self.name + ": "
         if self.show_signals:
-            for signal in self.get_signals():
+            for signal in self.signals:
                 desc += f"\n  {str(signal)}"
         if self.size and not self.segments:
             desc += "\n" + self.print_mem_table(self.memory, columns=3) + "\n"
@@ -254,10 +294,13 @@ class Memory(HWModule):
         return desc
 
     def is_enable(self):
+        """Check if the enable signal is asserted"""
         en_val = bool(self.enable.value.as_int)
         return en_val == self.enable_level
 
     def write(self):
+        """Perform a write of the current value of wdata to the current value
+        of addr"""
         mem_addr = self.addr.value.as_int
         if mem_addr is None or not self.addr_in_range(mem_addr):
             return
@@ -266,19 +309,17 @@ class Memory(HWModule):
                 raise ValueError("Out of Bounds Memory access!\n")
         self.memory[mem_addr] = self.wdata.value
 
-    def write_if_en(self):
+    def set_data(self, data):
+        super(Memory, self).set_data(data)
         if self.is_enable():
             self.write()
 
-    def set_data(self, data):
-        super(Memory, self).set_data(data)
-        self.write_if_en()
-
     def step(self, curr_time, step_time):
         new_time = curr_time + step_time
-        for signal in self.get_signals():
+        for signal in self.signals:
             signal.value = Value(self.data.get_value(signal, new_time))
-        self.write_if_en()
+        if self.is_enable():
+            self.write()
 
     def update(self, curr_time, step_time, num_steps):
         end_time = curr_time + num_steps * step_time
@@ -334,81 +375,98 @@ class Memory(HWModule):
 
 
 class HWModel():
+    """Hardware Models compose Hardware Module, which contain signals. This
+    constitutes a simulation platform for debugging"""
     def __init__(self, step_time):
         self.data = None
         self.time = 0
         self.end_time = None
         self._step_time = step_time
-        self.modules = []
+        self._modules = []
 
-    def get_traced_signals(self):
-        signals = []
-        for module in self.get_traced_modules():
-            signals.extend(module.get_signals())
-        return signals
+    @property
+    def signals(self):
+        """The Signals that the Model is tracking"""
+        _signals = []
+        for module in self.modules:
+            _signals.extend(module.signals)
+        return _signals
 
-    def get_signal_names(self):
+    @property
+    def signal_names(self):
+        """The names of the Signals that this Model is tracking"""
         names = []
-        for module in self.get_traced_modules():
-            names.extend(module.get_signal_names())
+        for module in self.modules:
+            names.extend(module.signal_names)
         return names
 
     def add_module(self, module):
+        """Add a module to the Model"""
         self.modules.append(module)
 
     @property
     def sim_time(self):
+        """The current simulation time"""
         return self.time
 
     @sim_time.setter
     def sim_time(self, value):
         self.time = value
 
-    def get_traced_modules(self):
-        return self.modules
+    @property
+    def modules(self):
+        """The modules contained within this model"""
+        return self._modules
 
     @property
     def step_time(self):
+        """The step increment for this model"""
         return self._step_time
 
     def get_end_time(self):
+        """The end time of simulation for this model"""
         return self.end_time
 
     def get_module(self, name):
-        modules = self.get_traced_modules()
-        req_module = [m for m in modules if m.get_name() == name]
+        """Get a module contained within this model with the given name"""
+        modules = self.modules
+        req_module = [m for m in modules if m.name == name]
         if not req_module:
             return None
         return req_module[0]
 
     def step(self):
+        """Step the model by step_time time forward"""
         if self.sim_time >= self.end_time:
             return self.sim_time
         self.sim_time += self.step_time
-        for module in self.get_traced_modules():
+        for module in self.modules:
             module.step(self.sim_time, self.step_time)
         return self.sim_time
 
     def set_data(self, data):
+        """Set the VCD data that this model should use as a backing"""
         self.data = data
         self.end_time = data.get_endtime()
-        for module in self.get_traced_modules():
+        for module in self.modules:
             module.set_data(data)
 
     def update(self, num_steps):
+        """Update this model by running forward num_steps steps"""
         end_time = num_steps * self.step_time + self.sim_time
         end_time = min(self.get_end_time(), end_time)
         num_steps = (end_time - self.sim_time) // self.step_time
-        for module in self.get_traced_modules():
+        for module in self.modules:
             module.update(self.sim_time, self.step_time, num_steps)
         self.sim_time = end_time
         return self.sim_time
 
     def rupdate(self, num_steps):
+        """Update this model by running backwards num_steps steps"""
         end_time = self.sim_time - (num_steps * self.step_time)
         end_time = max(0, end_time)
         num_steps = (self.sim_time - end_time) // self.step_time
-        for module in self.get_traced_modules():
+        for module in self.modules:
             module.rupdate(self.sim_time, self.step_time, num_steps)
         self.sim_time = end_time
         return self.sim_time

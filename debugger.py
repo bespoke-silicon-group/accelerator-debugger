@@ -32,7 +32,7 @@ def main():
         model = ManycoreModel()
         display = ManycoreView(model)
 
-    vcd = VCDData(args.INPUT, siglist=model.get_signal_names(),
+    vcd = VCDData(args.INPUT, siglist=model.signal_names,
                   cached=True, regen=args.regen,
                   siglist_dump_file=args.siglist_dump_file)
     model.set_data(vcd)

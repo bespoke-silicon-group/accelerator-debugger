@@ -63,8 +63,8 @@ class InputHandler():
         self.model = model
         self.display = display
         self.bkpt_namespace = {}
-        for module in self.model.get_traced_modules():
-            self.bkpt_namespace[module.get_name()] = module.get_signal_dict()
+        for module in self.model.modules:
+            self.bkpt_namespace[module.name] = module.signal_dict
         self.breakpoints = []
         self.next_bkpt_num = 0
         self.last_text = []
@@ -79,9 +79,9 @@ class InputHandler():
             while num_steps > 0:
                 self.model.step()
                 sim_time = self.model.sim_time
-                for module in self.model.get_traced_modules():
-                    signals = module.get_signal_dict()
-                    self.bkpt_namespace[module.get_name()] = signals
+                for module in self.model.modules:
+                    signals = module.signal_dict
+                    self.bkpt_namespace[module.name] = signals
                 for num, cond in self.breakpoints:
                     if eval(cond, {}, self.bkpt_namespace):
                         self.display.update()
@@ -109,10 +109,10 @@ class InputHandler():
 
     def parse_info(self, text):
         """ Handle the 'info' command """
-        modules = self.model.get_traced_modules()
+        modules = self.model.modules
         if len(text) == 1:
             raise InputException("info takes a module name")
-        req_module = [m for m in modules if m.get_name() == text[1]]
+        req_module = [m for m in modules if m.name == text[1]]
         if not req_module:
             raise InputException("Module not found!")
         return f"{str(req_module[0])}\n"
@@ -165,24 +165,24 @@ class InputHandler():
         return self.parse_step(f"step {steps}".split())
 
     def parse_go(self, text):
+        """ Handle the go command -- jump to a given time"""
         if len(text) == 1:
             raise InputException(f"Need to provide a time with go!")
+        dest_time = int(text[1])
+        curr_time = self.model.sim_time
+        steps = abs(dest_time - curr_time) // self.model.step_time
+        if dest_time < curr_time:
+            self.model.rupdate(steps)
         else:
-            dest_time = int(text[1])
-            curr_time = self.model.sim_time
-            steps = abs(dest_time - curr_time) // self.model.step_time
-            if dest_time < curr_time:
-                self.model.rupdate(steps)
-            else:
-                self.model.update(steps)
-            self.display.update()
-            return ""
+            self.model.update(steps)
+        self.display.update()
+        return ""
 
     def parse_list(self, _):
         """ Handle the list command -- list all modules """
         out_text = ""
-        for module in self.model.get_traced_modules():
-            out_text += f"* {module.get_name()}\n"
+        for module in self.model.modules:
+            out_text += f"* {module.name}\n"
         return out_text
 
     @staticmethod
@@ -261,7 +261,7 @@ class Runtime():
     def create_windows(self):
         """Create all the windows of the display (input, output, debugger,
         text completer)"""
-        module_names = [m.get_name() for m in self.model.get_traced_modules()]
+        module_names = [m.name for m in self.model.modules]
         search_field = SearchToolbar()
         # Generate the input text area
         input_field = TextArea(prompt='> ', style='class:arrow',
