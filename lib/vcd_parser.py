@@ -18,7 +18,7 @@ class VCDData():
     def __init__(self, filename, siglist=None, cached=False, regen=False,
                  siglist_dump_file=None):
         self.timescale = None
-        self.Change = namedtuple("Change", "time val")
+        self.change = namedtuple("Change", "time val")
         if siglist_dump_file is not None:
             self.dump_signal_list(filename, siglist_dump_file)
             exit(0)
@@ -37,8 +37,8 @@ class VCDData():
                     self.endtime = cache_dict['endtime']
             else:
                 print("Regenerating cached data")
-                self.vcd = self._parse_vcd(filename, only_sigs=False,
-                                           siglist=siglist, opt_timescale='')
+                self._parse_vcd(filename, only_sigs=False,
+                                siglist=siglist, opt_timescale='')
                 cache_dict = {'vcd' : self.vcd,
                               'endtime': self.endtime,
                               'timescale': self.timescale}
@@ -46,8 +46,8 @@ class VCDData():
                     json.dump(cache_dict, cfile)
                 print("Data generated and cached!")
         else:
-            self.vcd = self._parse_vcd(filename, only_sigs=False,
-                                       siglist=siglist, opt_timescale='')
+            self._parse_vcd(filename, only_sigs=False,
+                            siglist=siglist, opt_timescale='')
         self.mapping = {}
         for k in self.vcd.keys():
             signal = self.vcd[k]
@@ -57,8 +57,8 @@ class VCDData():
 
     def get_value(self, sig, time):
         """Gets the value of sig at the given time"""
-        # TODO This could be sped up by saving a pointer to the last time
-        #  but we'd need to change some things so that rsteps still worked
+        # This could be sped up by saving a pointer to the last time
+        # but we'd need to change some things so that rsteps still worked
         signal = self.vcd[sig.symbol]
         curr_value = None
         value_time = -1
@@ -75,7 +75,7 @@ class VCDData():
         signal = self.vcd[sig.symbol]
         for (tv_time, tv_val) in signal['tv']:
             if tv_time > curr_time:
-                return self.Change(tv_time, tv_val)
+                return self.change(tv_time, tv_val)
         return None
 
     def get_prev_change(self, sig, curr_time):
@@ -88,7 +88,7 @@ class VCDData():
             if tv_time < curr_time:
                 curr_value, value_time = tv_val, tv_time
             elif tv_time >= curr_time:
-                return self.Change(value_time, curr_value)
+                return self.change(value_time, curr_value)
         return None
 
     def get_symbol(self, sig_name):
@@ -97,21 +97,21 @@ class VCDData():
 
     def dump_signal_list(self, file, dump_file):
         """Dumps list of all signals in <file> into <dump_file>"""
-        vcd = self._parse_vcd(file, only_sigs=1)
+        self._parse_vcd(file, only_sigs=1)
         with open(dump_file, 'w+') as dump_f:
-            for symbol in vcd:
-                heir = vcd[symbol]['nets'][0]['hier']
-                name = vcd[symbol]['nets'][0]['name']
+            for symbol in self.vcd:
+                heir = self.vcd[symbol]['nets'][0]['hier']
+                name = self.vcd[symbol]['nets'][0]['name']
                 dump_f.write(f"{heir}.{name}\n")
 
     def check_signals(self, file, signals):
         """Parse VCD input file and make sure that all signals exist"""
-        vcd = self._parse_vcd(file, siglist=signals, only_sigs=1)
-        if len(vcd.keys()) != len(signals):
+        self._parse_vcd(file, siglist=signals, only_sigs=1)
+        if len(self.vcd.keys()) != len(signals):
             key_signals = []
-            for symbol in vcd:
-                heir = vcd[symbol]['nets'][0]['hier']
-                name = vcd[symbol]['nets'][0]['name']
+            for symbol in self.vcd:
+                heir = self.vcd[symbol]['nets'][0]['hier']
+                name = self.vcd[symbol]['nets'][0]['name']
                 key_signals.append(f"{heir}.{name}")
             model_signals = signals.copy()
             for signal in signals:
@@ -122,20 +122,82 @@ class VCDData():
                 print(signal)
             raise ValueError("Not all signals found")
 
+    def _parse_var(self, line, hier, usigs, all_sigs):
+        """ Parse a $var statement"""
+        # assumes all on one line:
+        #   $var reg 1 *@ data $end
+        #   $var wire 4 ) addr [3:0] $end
+        line_split = line.split()
+        (sig_type, size, code) = line_split[1:4]
+        name = "".join(line_split[4:-1])
+        path = '.'.join(hier)
+        full_name = path + '.' + name
+        if (full_name in usigs) or all_sigs:
+            if code not in self.vcd:
+                self.vcd[code] = {}
+            if 'nets' not in self.vcd[code]:
+                self.vcd[code]['nets'] = []
+            var_struct = {
+                'type': sig_type,
+                'name': name,
+                'size': size,
+                'hier': path,
+            }
+            if var_struct not in self.vcd[code]['nets']:
+                self.vcd[code]['nets'].append(var_struct)
+
+    def _parse_change(self, line, time):
+        """Parse a change of value in the VCD. Return True if parse was
+        successful, false otherwise"""
+        if line[0] in ('b', 'B', 'r', 'R'):
+            (value, code) = line[1:].split()
+            if code in self.vcd:
+                if 'tv' not in self.vcd[code]:
+                    self.vcd[code]['tv'] = []
+                self.vcd[code]['tv'].append((time, value))
+            return True
+
+        if line[0] in ('0', '1', 'x', 'X', 'z', 'Z'):
+            value = line[0]
+            code = line[1:]
+            if code in self.vcd:
+                if 'tv' not in self.vcd[code]:
+                    self.vcd[code]['tv'] = []
+                self.vcd[code]['tv'].append((time, value))
+            return True
+        return False
+
+    def _parse_timescale(self, line, handle, opt_timescale):
+        statement = line
+        if "$end" not in line:
+            while handle:
+                line = handle.readline()
+                statement += line
+                if "$end" in line:
+                    break
+
+        return self._calc_mult(statement, opt_timescale)
+
+    def _parse_enddefs(self, all_sigs):
+        num_sigs = len(self.vcd)
+        if not num_sigs and all_sigs:
+            VCDParseError("Error: No signals found. Check the file"
+                          "for proper var syntax.")
+
+        elif not num_sigs:
+            VCDParseError("Error: No matching signals found."
+                          " Use list_sigs"
+                          " to view all signals in the VCD file.")
+
     def _parse_vcd(self, file, only_sigs=0, siglist=None, opt_timescale=''):
         """Parse input VCD file into data structure.
         Also, print t-v pairs to STDOUT, if requested."""
 
-        usigs = {}
-        if siglist:
-            for i in siglist:
-                usigs[i] = 1
-
+        usigs = dict(zip(siglist, [1]*len(siglist))) if siglist else {}
         all_sigs = not bool(usigs)
 
-        data = {}
+        self.vcd = {}
         mult = 0
-        num_sigs = 0
         hier = []
         time = 0
 
@@ -153,49 +215,21 @@ class VCDData():
 
                 # put most frequent lines encountered at start of case,
                 # so other clauses usually don't need to be tested
-                if line[0] in ('b', 'B', 'r', 'R'):
-                    (value, code) = line[1:].split()
-                    if code in data:
-                        if 'tv' not in data[code]:
-                            data[code]['tv'] = []
-                        data[code]['tv'].append((time, value))
-
-                elif line[0] in ('0', '1', 'x', 'X', 'z', 'Z'):
-                    value = line[0]
-                    code = line[1:]
-                    if code in data:
-                        if 'tv' not in data[code]:
-                            data[code]['tv'] = []
-                        data[code]['tv'].append((time, value))
+                if self._parse_change(line, time):
+                    continue
 
                 elif line[0] == '#':
                     time = mult * int(line[1:])
                     self.endtime = time
 
                 elif "$enddefinitions" in line:
-                    num_sigs = len(data)
-                    if not num_sigs and all_sigs:
-                        VCDParseError("Error: No signals found. Check the file"
-                                      "for proper var syntax.")
-
-                    elif not num_sigs:
-                        VCDParseError("Error: No matching signals found."
-                                      " Use list_sigs"
-                                      " to view all signals in the VCD file.")
-
+                    self._parse_enddefs(all_sigs)
                     if only_sigs:
                         break
 
                 elif "$timescale" in line:
-                    statement = line
-                    if "$end" not in line:
-                        while file_handle:
-                            line = file_handle.readline()
-                            statement += line
-                            if "$end" in line:
-                                break
-
-                    mult = self._calc_mult(statement, opt_timescale)
+                    mult = self._parse_timescale(line, file_handle,
+                                                 opt_timescale)
 
                 elif "$scope" in line:
                     # assumes all on one line
@@ -206,30 +240,7 @@ class VCDData():
                     hier.pop()
 
                 elif "$var" in line:
-                    # assumes all on one line:
-                    #   $var reg 1 *@ data $end
-                    #   $var wire 4 ) addr [3:0] $end
-                    line_split = line.split()
-                    (sig_type, size, code) = line_split[1:4]
-                    name = "".join(line_split[4:-1])
-                    path = '.'.join(hier)
-                    full_name = path + '.' + name
-                    if (full_name in usigs) or all_sigs:
-                        if code not in data:
-                            data[code] = {}
-                        if 'nets' not in data[code]:
-                            data[code]['nets'] = []
-                        var_struct = {
-                            'type': sig_type,
-                            'name': name,
-                            'size': size,
-                            'hier': path,
-                        }
-                        if var_struct not in data[code]['nets']:
-                            data[code]['nets'].append(var_struct)
-
-        file_handle.close()
-        return data
+                    self._parse_var(line, hier, usigs, all_sigs)
 
     def _calc_mult(self, statement, opt_timescale=''):
         """
