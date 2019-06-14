@@ -8,19 +8,11 @@ from lib.view import HSplit, View, Display
 class TestModel(HWModel):
     """ Hardware model for data/ex.vpd; simple memory and signal values """
     def __init__(self):
-        self.modules = []
+        super(TestModel, self).__init__(100)
         signals = ['logic.data', 'logic.data_valid']
-        self.modules.append(BasicModule("r0_data", signals))
-        self.modules.append(Memory('memory', 'logic.waddr', 'logic.wdata',
-                                   'logic.tx_en', True))
-        super(TestModel, self).__init__()
-
-    def get_traced_modules(self):
-        return self.modules
-
-    @property
-    def step_time(self):
-        return 100
+        self.add_module(BasicModule("r0_data", signals))
+        self.add_module(Memory('memory', 'logic.waddr', 'logic.wdata',
+                               'logic.tx_en', True))
 
 class TestView(Display):
     """ The Display for viewing TestModel """

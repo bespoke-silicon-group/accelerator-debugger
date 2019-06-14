@@ -184,7 +184,11 @@ class Memory(HWModule):
             self.memory = dict(self.memory)
         else:
             self.memory = {}
+        self.enable_level = bool(enable_level)
+        self.show_signals = show_signals
         self.segments = segments
+        if segments is None:
+            return
         Segment = namedtuple("Segment", 'start end')
         for i, segment in enumerate(self.segments):
             if isinstance(segment, tuple):
@@ -192,8 +196,6 @@ class Memory(HWModule):
             else:
                 start, end = (int(segment, 16), int(segment, 16))
             self.segments[i] = Segment(start, end)
-        self.enable_level = bool(enable_level)
-        self.show_signals = show_signals
 
     @property
     def addr(self):
