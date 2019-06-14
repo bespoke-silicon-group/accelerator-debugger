@@ -45,9 +45,7 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
     * Can be sped up with `compiler.compile()`
 
 ### TODO
-[ ] go <time> (go to specified time, ignoring breakpoints)
 [ ] Refactor on lib/hw_models.py for pylint
-[x] Always show simulation time to right of command bar (as rprompt)
 [ ] Display information as densely as possible (Micheal, Mark disagrees)
     [ ] Align text on colon
     [ ] Standardized tab spacing

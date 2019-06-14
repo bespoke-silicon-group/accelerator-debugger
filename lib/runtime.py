@@ -16,7 +16,7 @@ from prompt_toolkit.layout.menus import CompletionsMenu
 import prompt_toolkit.layout.containers as pt_containers
 
 COMMANDS = ['step', 'info', 'list', 'time', 'help', 'breakpoint', 'lsbrk',
-            'delete', 'run', 'clear', 'rstep']
+            'delete', 'run', 'clear', 'rstep', 'go']
 
 
 class ModuleCompleter(Completer):
@@ -164,6 +164,20 @@ class InputHandler():
         steps = (end_time - curr_time) // self.model.step_time
         return self.parse_step(f"step {steps}".split())
 
+    def parse_go(self, text):
+        if len(text) == 1:
+            raise InputException(f"Need to provide a time with go!")
+        else:
+            dest_time = int(text[1])
+            curr_time = self.model.sim_time
+            steps = abs(dest_time - curr_time) // self.model.step_time
+            if dest_time < curr_time:
+                self.model.rupdate(steps)
+            else:
+                self.model.update(steps)
+            self.display.update()
+            return ""
+
     def parse_list(self, _):
         """ Handle the list command -- list all modules """
         out_text = ""
@@ -183,6 +197,7 @@ class InputHandler():
         htext += "    lsbrk: List set breakpoints\n"
         htext += "    delete <num>: Delete a breakpoint, specified by number\n"
         htext += "    run <time>: Run simulation until a specified time\n"
+        htext += "    go <time>: Jump to a given time, ignoring breakpoints\n"
         htext += "    clear: Clear the output window\n"
         htext += "    help: Print this text"
         return htext
@@ -222,6 +237,8 @@ class InputHandler():
                 out_text = self.delete(text)
             elif text[0] == 'run':
                 out_text = self.run(text)
+            elif text[0] == 'go':
+                out_text = self.parse_go(text)
             elif text[0] == 'clear':
                 out_text = ""
             else:
