@@ -9,6 +9,7 @@ import os.path
 import json
 from collections import namedtuple
 
+
 class VCDParseError(Exception):
     """our local exception for VCD parsing errors (inherited from Exception)"""
 
@@ -39,7 +40,7 @@ class VCDData():
                 print("Regenerating cached data")
                 self._parse_vcd(filename, only_sigs=False,
                                 siglist=siglist, opt_timescale='')
-                cache_dict = {'vcd' : self.vcd,
+                cache_dict = {'vcd': self.vcd,
                               'endtime': self.endtime,
                               'timescale': self.timescale}
                 with open(cached_fname, 'w+') as cfile:

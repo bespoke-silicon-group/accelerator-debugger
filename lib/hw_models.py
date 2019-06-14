@@ -2,6 +2,7 @@
 
 from collections import namedtuple
 
+
 class AttrDict(dict):
     def __init__(self, *args, **kwargs):
         super(AttrDict, self).__init__(*args, **kwargs)
@@ -60,7 +61,7 @@ class Value():
                     str1, str2 = self.as_hex[2:], other[2:]
                 else:
                     raise RuntimeError("Need to prefix value with 0b or 0x")
-            else: # Assumed to be an integer
+            else:  # Assumed to be an integer
                 str1, str2 = self.value, bin(other)[2:]
         return all('x' in [c1, c2] or c1 == c2 for c1, c2 in zip(str1, str2))
 
@@ -310,7 +311,6 @@ class Memory(HWModule):
             curr_time = change_time
         return Value('xx')
 
-
     def rupdate(self, curr_time, step_time, num_steps):
         new_time = curr_time - (step_time * num_steps)
         while new_time < curr_time:
@@ -331,6 +331,7 @@ class Memory(HWModule):
             else:
                 for sig in self.signals[:2]:
                     sig.value = Value(self.data.get_value(sig, new_time))
+
 
 class HWModel():
     def __init__(self, step_time):

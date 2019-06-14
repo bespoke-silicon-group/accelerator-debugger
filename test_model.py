@@ -14,6 +14,7 @@ class TestModel(HWModel):
         self.add_module(Memory('memory', 'logic.waddr', 'logic.wdata',
                                'logic.tx_en', True))
 
+
 class TestView(Display):
     """ The Display for viewing TestModel """
     def gen_top_view(self, model):
