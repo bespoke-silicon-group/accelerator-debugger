@@ -90,6 +90,7 @@ class InputHandler():
                     self.display.update()
                     return f"Hit simulation end at time {self.model.sim_time}"
                 num_steps -= 1
+            self.display.update()
             return ""
         self.model.update(num_steps)
         self.display.update()

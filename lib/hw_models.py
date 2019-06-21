@@ -77,6 +77,8 @@ class Value():
         return all('x' in [c1, c2] or c1 == c2 for c1, c2 in zip(str1, str2))
 
     def __str__(self):
+        if self.int_val is None:
+            return "x"
         return self.as_hex
 
     def __repr__(self):
@@ -219,7 +221,7 @@ class Memory(DebugModule):
         self.size = size
         # If the user gave a size, we should allocate memory
         if self.size:
-            self.memory = [(x, '0') for x in range(self.size)]
+            self.memory = [(x, 'x') for x in range(self.size)]
             self.memory = dict(self.memory)
         else:
             self.memory = {}
@@ -354,7 +356,7 @@ class Memory(DebugModule):
             if change_addr.as_int == write_addr:
                 return Value(self.data.get_value(self.wdata, change_time))
             curr_time = change_time
-        return Value('xx')
+        return Value('x')
 
     def rupdate(self, curr_time, step_time, num_steps):
         new_time = curr_time - (step_time * num_steps)
