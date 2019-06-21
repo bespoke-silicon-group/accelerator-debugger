@@ -180,7 +180,7 @@ class BasicModule(DebugModule):
     def signal_dict(self):
         signal_dict = {}
         for signal in self.signals:
-            short_name = signal.name.split('.')[-1]
+            short_name = signal.name.split('.')[-1].split('[')[0]
             signal_dict[short_name] = signal.value
         return AttrDict(signal_dict)
 

@@ -6,6 +6,8 @@
 """
 
 
+import pdb
+
 from prompt_toolkit.styles import Style
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.widgets import TextArea, SearchToolbar, Label
@@ -82,7 +84,7 @@ class InputHandler():
                 for module in self.model.modules:
                     signals = module.signal_dict
                     self.bkpt_namespace[module.name] = signals
-                for num, cond in self.breakpoints:
+                for num, _, cond in self.breakpoints:
                     if eval(cond, {}, self.bkpt_namespace):
                         self.display.update()
                         return f"Hit breakpoint {num} at time {sim_time}"
@@ -125,20 +127,21 @@ class InputHandler():
         condition = " ".join(text[1:])
         try:
             current_cond = eval(condition, {}, self.bkpt_namespace)
-        except:  # Bare except, since this is literally a catch-all
-            raise InputException("Invalid breakpoint condition!")
+        except Exception as e:  # Bare except, since this is literally a catch-all
+            raise InputException("Invalid breakpoint condition!\n" + str(e))
         if not isinstance(current_cond, bool):
             raise InputException("Breakpoint condition not boolean!")
 
+        compiled_cond = compile(condition, '<string>', 'eval')
         bkpt_num = self.next_bkpt_num
         self.next_bkpt_num += 1
-        self.breakpoints.append((bkpt_num, condition))
+        self.breakpoints.append((bkpt_num, condition, compiled_cond))
         return f"Breakpoint {bkpt_num}: {condition}"
 
     def lsbrk(self, _):
         """ Handle the lsbrk command -- list breakpoints """
         out_text = ""
-        for bkpt_num, condition in self.breakpoints:
+        for bkpt_num, condition, _ in self.breakpoints:
             out_text += f"Breakpoint {bkpt_num}: {condition}\n"
         return out_text[:-1]  # Strip final newline
 
@@ -239,6 +242,8 @@ class InputHandler():
                 out_text = self.parse_go(text)
             elif text[0] == 'clear':
                 out_text = ""
+            elif text[0] == 'debugger':
+                pdb.set_trace()
             else:
                 raise InputException("Invalid Command!")
         except InputException as exception:
