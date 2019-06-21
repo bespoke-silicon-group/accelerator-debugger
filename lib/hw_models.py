@@ -200,14 +200,18 @@ class BasicModule(HWModule):
 
 class Memory(HWModule):
     """A memory traces when writes occur based on the enable signal.
+
     If a size is given, we allocated a memory of the given size,
     otherwise memory locations are allocated lazily when writes occur.
+
     The user can also specify segments of addresses that should be
     exclusively tracked and displayed.
+
     segments should be given as a list of individual address and
     (start_addr, end_addr) tuples, all as hex.
+
     show_signals sets whether address, data, and write_enable signals should
-    be show (default False)
+    be shown in the display (default False)
     """
     def __init__(self, module_name, addr, wdata, enable, enable_level,
                  segments=None, size=0, show_signals=False):

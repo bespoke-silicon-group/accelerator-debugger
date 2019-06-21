@@ -6,8 +6,7 @@ else
 endif
 
 DATA := data/splitpacked.vcd
-# all:
-	# pipenv run $(PYTHON) debugger.py data/vcd.vcd manycore
+
 all:
 	$(PYTHON) debugger.py $(DATA) manycore
 regen:

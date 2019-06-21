@@ -33,44 +33,49 @@ instead of Synopsys's proprietary VPD file format. To convert between VPD files
 and VCD files, Synopsys provides a tool with a standard VCS installation:
 `vpd2vcd <input_vpd_file> <output_vcd_file>`
 
-### Sim notes
- Stepping a simulation should just be stepping a HWModel, which
- steps all the module contained within it. Then, we can update
- each pane with the new information.
+By default, `vpd2vcd` doesn't unpack structures, which can make debugging
+challenging in projects that make heavy use of packed structures. To generate
+the unpacked VCD file, use the `+splitpacked` flag when running `vpd2vcd`.
 
-### Implementing Breakpoints
-`break <condition>` where the condition is a blend of variables and operators
-* Could implement with eval(), but language of condition needs to be python
-    * This can be fix with a couple find-replaces
-    * Can be sped up with `compiler.compile()`
+Compared to VPD files, VCD files can be extremely large (on the order of 4GB
+for a VCD file that was generated from a 50MB VPD file). One way of reducing
+the size of the resulting VCD file is to only translate value changes within a
+certain time range. This can be accomplished with the following:
+`vpd2vcd +start+<start_time> +end+<end_time> <input_file> <output_file>`
 
-### TODO
-[ ] Refactor on lib/hw_models.py for pylint
-[ ] Display information as densely as possible (Micheal, Mark disagrees)
-    [ ] Align text on colon
-    [ ] Standardized tab spacing
-[ ] Speed up breakpoints with compiler.compile()
+## Creating a HWModel
+To use the debugger, one needs to create a `HWModel` based on the hardware
+used. See `test_model.py` for a simple version of a `HWModel` and
+`manycore_model.py` for a more complex version. A `HWModel` is a series of
+`HWModule` that, in turn, are a collection of signals. To create a `HWModel`,
+one needs to determine which signals in the VCD are useful for debugging, then
+wrap those signals into logical `HWModule` units.
 
-### Stretch
+Currently, there are two types of `HWModule` units. A `BasicModule` is just a
+wrapper for signals and is instantiated by providing a name for the module and
+a list of signals names that the module composes. A `Memory` takes address,
+write data, and write enable signal names, as well as the assertion level of
+the write enable as a boolean. Additionally, one can select segments of the of
+the memory that are of interest by providing a list of segments when
+initializing the `Memory`.
+
+After modules are initialized, they can be added to the `HWModel` via
+`self.add_module` in the `__init__` function of the `HWModel`.
+
+## Creating a Display
+Creating a display is simple! One only needs to override the `gen_top_view`
+function of the `Display` class to select the modules that need to be
+displayed, describe the arrangement of modules with horizontal splits
+(`HSplit`, where the first module is above the other) and vertical splits (`VSplit`,
+where the first module is to the left of the other). Splits can be composed
+with other splits to create complex views with relatively little effort. The
+function `gen_top_view` should return the top level `View`, `HSplit`, or
+`VSplit`.
+
+## Using the Debugger
+
+### Stretch things to add
 [ ] Hook into ELF file stubs (there's a GNU library for this)
 [ ] When instantiating module, SW dev can decide what signals to include
    (by default, includes all)
 [ ] Parse AST to see what vars breakpoints depends on
-
-## Debugging The Manycore
-* Register files (but maybe only some registers)
-    * s7, s8 get loads; a0 holds store value, a1 holds address, a0/a1 hold
-        addresses for loads (x10,x11, x23, x24)
-    * Memory locations that are being loaded and stored on each core
-        [0x1980-0x198c]
-    * Maybe specifics on which cores are being addressed, but this is
-     implicit in the address
-* Loads at  0xba0, 0xba4
-    * 00052b83 rd = 23, addr = r10
-    * 0005ac03 rd = 24, addr = r11
-* Stores at 0xc24, 0xc7c, 0xc90, 0xca4
-    * 00a6a023, (data=r10, addr=r13)
-    * 00a5a023, (data=r10, addr=r11)
-    * 00a5a023, (data=r10, addr=r11)
-    * 00a5a023, (data=r10, addr=r11)
-* Remote loads and stores between cores
