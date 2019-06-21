@@ -2,12 +2,12 @@
 
 """Model and View for a 2x2 celerity manycore"""
 
-from lib.hw_models import HWModel, BasicModule, Memory
+from lib.hw_models import DebugModel, BasicModule, Memory
 from lib.view import HSplit, VSplit, View, Display
 
 
-class ManycoreModel(HWModel):
-    """HWModel that describes a 2x2 celerity manycore"""
+class ManycoreModel(DebugModel):
+    """DebugModel that describes a 2x2 celerity manycore"""
     def gen_rf_module(self, core_x, core_y):
         """ Generate module for the given x,y core for the register file"""
         header = f"test_bsg_manycore.UUT.y[{core_y+1}].x[{core_x}].tile."
@@ -22,14 +22,14 @@ class ManycoreModel(HWModel):
                                show_signals=False))
 
     def gen_inst_module(self, core_x, core_y):
-        """HWModule for signals that describe the current instruction"""
+        """DebugModule for signals that describe the current instruction"""
         header = f"test_bsg_manycore.UUT.y[{core_y+1}].x[{core_x}].tile."
         header += "proc.h.z.vanilla_core."
         inst_sigs = [header + "exe.pc_plus4[31:0]"]
         self.add_module(BasicModule(f"inst_{core_y}_{core_x}", inst_sigs))
 
     def gen_wmem_module(self, core_x, core_y):
-        """HWModule for signals that write to the local memory"""
+        """DebugModule for signals that write to the local memory"""
         header = f"test_bsg_manycore.UUT.y[{core_y+1}].x[{core_x}].tile."
         header += "proc.h.z.vanilla_core."
         addr = header + 'to_mem_o.addr[31:0]'
@@ -41,7 +41,7 @@ class ManycoreModel(HWModel):
         self.add_module(BasicModule(f"wmem_{core_y}_{core_x}", mem_sigs))
 
     def gen_remote_module(self, core_x, core_y):
-        """HWModule for signals used in accessing remote cores"""
+        """DebugModule for signals used in accessing remote cores"""
         header = f"test_bsg_manycore.UUT.y[{core_y+1}].x[{core_x}].tile."
         header += "proc.h.z."
         lout = header + 'launching_out'
@@ -54,8 +54,8 @@ class ManycoreModel(HWModel):
 
     def __init__(self):
         super(ManycoreModel, self).__init__(20)
-        for i in range(2):
-            for j in range(2):
+        for i in range(2):  # X dimension
+            for j in range(2):  # Y Dimensiohn
                 self.gen_remote_module(j, i)
                 self.gen_wmem_module(j, i)
                 self.gen_rf_module(j, i)

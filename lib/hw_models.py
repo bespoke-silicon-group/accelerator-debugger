@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
-"""Back-end for the debugger. Hardware Models (HWModel) are composed of
-Hardware Modules (HWModule), which are composed of Signals, which have a
+"""Back-end for the debugger. Hardware Models (DebugModel) are composed of
+Hardware Modules (DebugModule), which are composed of Signals, which have a
 Value"""
 
 from collections import namedtuple
@@ -90,7 +90,7 @@ class Value():
 
 class Signal():
     """Signals are compsed of the VCD symbol that represents the signal,
-    the name of the signal in the HW module that's it's part of, and
+    the name of the signal in the DebugModule that's it's part of, and
     its current value"""
     def __init__(self, sig_name, vcd_data):
         self._symbol = vcd_data.get_symbol(sig_name)
@@ -114,7 +114,7 @@ class Signal():
         return str(self) + " " + self.symbol
 
 
-class HWModule():
+class DebugModule():
     """ Signals are tuples of (global_symbol, name_in_module, value) """
     def __init__(self, module_name, signal_names):
         self._signal_names = signal_names
@@ -165,7 +165,7 @@ class HWModule():
         raise NotImplementedError
 
 
-class BasicModule(HWModule):
+class BasicModule(DebugModule):
     """A module with plain signals that don't have side effects (i.e. not
     memory signals"""
     def __str__(self):
@@ -198,7 +198,7 @@ class BasicModule(HWModule):
             signal.value = Value(self.data.get_value(signal, new_time))
 
 
-class Memory(HWModule):
+class Memory(DebugModule):
     """A memory traces when writes occur based on the enable signal.
 
     If a size is given, we allocated a memory of the given size,
@@ -215,7 +215,7 @@ class Memory(HWModule):
     """
     def __init__(self, module_name, addr, wdata, enable, enable_level,
                  segments=None, size=0, show_signals=False):
-        HWModule.__init__(self, module_name, [addr, wdata, enable])
+        DebugModule.__init__(self, module_name, [addr, wdata, enable])
         self.size = size
         # If the user gave a size, we should allocate memory
         if self.size:
@@ -378,7 +378,7 @@ class Memory(HWModule):
                     sig.value = Value(self.data.get_value(sig, new_time))
 
 
-class HWModel():
+class DebugModel():
     """Hardware Models compose Hardware Module, which contain signals. This
     constitutes a simulation platform for debugging"""
     def __init__(self, step_time):

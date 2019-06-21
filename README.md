@@ -43,15 +43,15 @@ the size of the resulting VCD file is to only translate value changes within a
 certain time range. This can be accomplished with the following:
 `vpd2vcd +start+<start_time> +end+<end_time> <input_file> <output_file>`
 
-## Creating a HWModel
-To use the debugger, one needs to create a `HWModel` based on the hardware
-used. See `test_model.py` for a simple version of a `HWModel` and
-`manycore_model.py` for a more complex version. A `HWModel` is a series of
-`HWModule` that, in turn, are a collection of signals. To create a `HWModel`,
+## Creating a DebugModel
+To use the debugger, one needs to create a `DebugModel` based on the hardware
+used. See `test_model.py` for a simple version of a `DebugModel` and
+`manycore_model.py` for a more complex version. A `DebugModel` is a series of
+`DebugModule` that, in turn, are a collection of signals. To create a `DebugModel`,
 one needs to determine which signals in the VCD are useful for debugging, then
-wrap those signals into logical `HWModule` units.
+wrap those signals into logical `DebugModule` units.
 
-Currently, there are two types of `HWModule` units. A `BasicModule` is just a
+Currently, there are two types of `DebugModule` units. A `BasicModule` is just a
 wrapper for signals and is instantiated by providing a name for the module and
 a list of signals names that the module composes. A `Memory` takes address,
 write data, and write enable signal names, as well as the assertion level of
@@ -59,8 +59,8 @@ the write enable as a boolean. Additionally, one can select segments of the of
 the memory that are of interest by providing a list of segments when
 initializing the `Memory`.
 
-After modules are initialized, they can be added to the `HWModel` via
-`self.add_module` in the `__init__` function of the `HWModel`.
+After modules are initialized, they can be added to the `DebugModel` via
+`self.add_module` in the `__init__` function of the `DebugModel`.
 
 ## Creating a Display
 Creating a display is simple! One only needs to override the `gen_top_view`

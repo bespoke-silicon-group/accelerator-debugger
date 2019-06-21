@@ -1,12 +1,12 @@
 #! /usr/bin/env python3
 """Module to be used for testing with ex.vcd"""
 
-from lib.hw_models import HWModel, BasicModule, Memory
+from lib.hw_models import DebugModel, BasicModule, Memory
 from lib.view import HSplit, View, Display
 
 
-class TestModel(HWModel):
-    """ Hardware model for data/ex.vpd; simple memory and signal values """
+class TestModel(DebugModel):
+    """ Debug model for data/ex.vpd; simple memory and signal values """
     def __init__(self):
         super(TestModel, self).__init__(100)
         signals = ['logic.data', 'logic.data_valid']

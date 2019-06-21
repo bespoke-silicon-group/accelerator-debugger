@@ -15,7 +15,7 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout.menus import CompletionsMenu
 import prompt_toolkit.layout.containers as pt_containers
 
-COMMANDS = ['step', 'info', 'list', 'time', 'help', 'breakpoint', 'lsbrk',
+COMMANDS = ['step', 'info', 'list', 'help', 'breakpoint', 'lsbrk',
             'delete', 'run', 'clear', 'rstep', 'go']
 
 
@@ -191,7 +191,6 @@ class InputHandler():
         htext = "HELP:\n    step <n>: Step the simulation n times\n"
         htext += "    rstep <n>: Step the simulation backwards n times\n"
         htext += "    info <module_name>: Print the status of a given module\n"
-        htext += "    time: Print the current simulation time\n"
         htext += "    breakpoint <cond>: Set a breakpoint given a condition\n"
         htext += "       breakpoint conditions are written in Python syntax\n"
         htext += "    lsbrk: List set breakpoints\n"
@@ -203,7 +202,7 @@ class InputHandler():
         return htext
 
     def get_time_str(self):
-        """ Handle the 'time' command -- print current simulation time """
+        """ Get current simulation time as a string """
         return str(self.model.sim_time)
 
     def accept(self, _):
@@ -227,8 +226,6 @@ class InputHandler():
                 out_text = self.parse_step(text)
             elif text[0] == 'rstep' or text[0] == 'rs':
                 out_text = self.parse_rstep(text)
-            elif text[0] == 'time':
-                out_text = self.get_time_str()
             elif text[0] == 'breakpoint' or text[0] == 'b':
                 out_text = self.parse_breakpoint(text)
             elif text[0] == 'lsbrk':
@@ -246,7 +243,8 @@ class InputHandler():
         except InputException as exception:
             out_text = f"ERROR: {str(exception)}"
         self.last_text = text
-        self.time_field.text = "Time: " + self.get_time_str()
+        time_str = self.get_time_str() + "/" + str(self.model.get_end_time())
+        self.time_field.text = "Time: " + time_str
 
         self.output.text = out_text
 
@@ -271,11 +269,12 @@ class Runtime():
                                multiline=False, wrap_lines=True)
 
         # Field to show current time
-        end_time = self.model.get_end_time()
-        time_field = TextArea(text="Time: " + str(self.model.sim_time),
+        end_time = str(self.model.get_end_time())
+        time_str = str(self.model.sim_time) + "/" + end_time
+        time_field = TextArea(text="Time: " + time_str,
                               style='class:rprompt',
                               height=1,
-                              width=len(str(end_time)) + 7,
+                              width=len(end_time)*2 + 7,
                               multiline=False)
 
         command_output = Label(text="")
