@@ -1,11 +1,12 @@
-PYPY := pypy
+PYPY := 1
 ifdef PYPY
-    PYTHON := $(PYPY)
+    PYTHON := pypy
 else
-    PYTHON := pipenv run python3
+    PYTHON := python3
 endif
 
-DATA := data/splitpacked.vcd
+DATA := data/fft_good.vcd
+BINARY := data/fft_good
 
 all:
 	$(PYTHON) debugger.py $(DATA) manycore
@@ -15,3 +16,6 @@ test:
 	$(PYTHON) debugger.py data/ex.vcd test
 siglist:
 	$(PYTHON) debugger.py $(DATA) manycore --dump-siglist data/splitpacked.siglist
+
+elftest:
+	$(PYTHON) elftest.py $(BINARY)

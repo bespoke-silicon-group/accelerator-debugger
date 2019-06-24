@@ -16,15 +16,10 @@ hardware's interworking and work closely with hardware developers.
 
 
 ## Setup
-This project uses [pipenv](https://pipenv.readthedocs.io/en/latest/) to manage
-packages. Pipenv can be installed via:
-`pip install --user pipenv` or `brew install pipenv`.
-
-After pipenv is installed, packages can be installed with:
-`pipenv install`
-
-The project can be run with:
-`pipenv run python <python_file>`
+This project has two dependencies, `prompt_toolkit` and `pyelftools`. Both can
+be installed with `pip`:
+`pip install prompt_toolkit`
+`pip install pyelftools`
 
 
 ## Getting Started
@@ -76,6 +71,7 @@ function `gen_top_view` should return the top level `View`, `HSplit`, or
 
 ### Stretch things to add
 [ ] Hook into ELF file stubs (there's a GNU library for this)
+[ ] list command to list lines of C source (and assembly)
 [ ] When instantiating module, SW dev can decide what signals to include
    (by default, includes all)
 [ ] Parse AST to see what vars breakpoints depends on
