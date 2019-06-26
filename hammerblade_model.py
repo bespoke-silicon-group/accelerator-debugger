@@ -18,7 +18,6 @@ class HammerbladeModel(DebugModel):
         wen = header + "rf_wen"
         self.add_module(Memory(f"rf_{core_y}_{core_x}", addr, wdata, wen,
                                True, size=32,
-                               segments=['a', 'b', '17', '18'],
                                show_signals=False))
 
     def gen_inst_module(self, core_x, core_y):
@@ -79,6 +78,23 @@ class HammerbladeView(Display):
                 wmem.append(View(model.get_module(f"wmem_{i}_{j}")))
                 remote.append(View(model.get_module(f"remote_{i}_{j}")))
 
+
+        regs = VSplit(
+            VSplit(
+                HSplit(HSplit(regs[0], regs[1]),
+                       HSplit(regs[2], regs[3])),
+                HSplit(HSplit(regs[4], regs[5]),
+                       HSplit(regs[6], regs[7]))),
+            VSplit(
+                HSplit(HSplit(regs[8], regs[9]),
+                       HSplit(regs[10], regs[11])),
+                HSplit(HSplit(regs[12], regs[13]),
+                       HSplit(regs[14], regs[15])))
+            )
+        return regs
+
+
+"""
         regs = VSplit(
             VSplit(
                 HSplit(
@@ -130,7 +146,6 @@ class HammerbladeView(Display):
                         HSplit(VSplit(regs[15], remote[15]),
                                VSplit(insts[15], wmem[15])))
                 )))
-        return regs
-
+"""
 
 
