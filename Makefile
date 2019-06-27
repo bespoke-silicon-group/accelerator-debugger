@@ -5,11 +5,11 @@ else
     PYTHON := python3
 endif
 
-DATA := data/fft_good.vcd
+DATA := data/splitpacked.vcd
 BINARY := data/fft_good
 
 all:
-	$(PYTHON) debugger.py $(DATA) manycore
+	$(PYTHON) debugger.py $(DATA) manycore --binary $(BINARY)
 regen:
 	$(PYTHON) debugger.py --regen $(DATA) manycore
 test:
@@ -18,4 +18,4 @@ siglist:
 	$(PYTHON) debugger.py $(DATA) manycore --dump-siglist data/splitpacked.siglist
 
 elftest:
-	$(PYTHON) elftest.py $(BINARY)
+	$(PYTHON) elftest.py 0x00000fd0 $(BINARY)

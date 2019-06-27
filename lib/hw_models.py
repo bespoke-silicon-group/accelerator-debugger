@@ -380,6 +380,34 @@ class Memory(DebugModule):
                     sig.value = Value(self.data.get_value(sig, new_time))
 
 
+class Core(DebugModule):
+    def __init__(self, module_name, pc, other_signals=None):
+        if other_signals is None:
+            other_signals = []
+        DebugModule.__init__(self, module_name, [pc] + other_signals)
+
+    @property
+    def pc(self):
+        """The PC signal for this Core"""
+        return self.signals[0]
+
+    @property
+    def signal_dict(self):
+        pass
+
+    def __str__(self):
+        pass
+
+    def step(self, curr_time, step_time):
+        pass
+
+    def update(self, curr_time, step_time, num_steps):
+        pass
+
+    def rupdate(self, curr_time, step_time, num_steps):
+        pass
+
+
 class DebugModel():
     """Hardware Models compose Hardware Module, which contain signals. This
     constitutes a simulation platform for debugging"""

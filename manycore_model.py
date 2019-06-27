@@ -25,7 +25,10 @@ class ManycoreModel(DebugModel):
         """DebugModule for signals that describe the current instruction"""
         header = f"test_bsg_manycore.UUT.y[{core_y+1}].x[{core_x}].tile."
         header += "proc.h.z.vanilla_core."
-        inst_sigs = [header + "exe.pc_plus4[31:0]"]
+        inst_sigs = []
+        inst_sigs.append(header + "exe.pc_plus4[31:0]")
+        inst_sigs.append(header + "id.pc_plus4[31:0]")
+        inst_sigs.append(header + "pc_n[21:0]")
         self.add_module(BasicModule(f"inst_{core_y}_{core_x}", inst_sigs))
 
     def gen_wmem_module(self, core_x, core_y):

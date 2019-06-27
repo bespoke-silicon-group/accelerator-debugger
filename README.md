@@ -68,6 +68,36 @@ function `gen_top_view` should return the top level `View`, `HSplit`, or
 `VSplit`.
 
 ## Using the Debugger
+### Terminology
+* fedge: advance one clock edge
+* redge: reverse one clock edge
+* rstep: Go backwards one line in source
+* step: step forward one line in source
+* where <module>: Give source listing of where a core's execution is (+asm?) in
+    parallel
+* info: List signals in module; maybe with special casing for Memory/Core
+* break: Set breakpoint
+* lsbrk: list breakpoints
+* delete: delete breakpoint
+
+### ELF Stubs
+[ ] Way to specify "PC" module, basically, what we'd step
+[ ] Step line of source code in a given core
+[ ] List source location (give address, "PC" module, signal name)
+    * Alt -- just step based on a specific signal
+    * User can give module (module needs to be "PC" module) or signal name;
+      step takes current signal value and steps time until source line changes
+[ ] "next" command -- step until next line in same file
+    * Issue: need to be able to step out of functions?
+      Could always track a list of functions that we enter -- this means checking
+      the source line on every step
+[ ] List assembly instructions being executed by given core (in human readable fmt)
+[ ] Info on a code module gives asm instructions and source?
+
+### Misc fixes
+[ ] Input handler should just have a pointer to Runtime, get fields from there
+[ ] If multiple signals in a module shorten to the same thing, give a longer
+    name
 
 ### Stretch things to add
 [ ] Hook into ELF file stubs (there's a GNU library for this)

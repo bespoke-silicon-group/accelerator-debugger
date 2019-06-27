@@ -22,6 +22,9 @@ def main():
                         help="Input VCD file")
     parser.add_argument('MODEL', type=str,
                         help="Model for HW")
+    parser.add_argument('--binary', action='store',
+                        dest='bin_file', default=None,
+                        help="ELF file used in simulation")
 
     args = parser.parse_args()
 
@@ -37,7 +40,7 @@ def main():
                   siglist_dump_file=args.siglist_dump_file)
     model.set_data(vcd)
 
-    runtime = Runtime(display, model)
+    runtime = Runtime(display, model, args.bin_file)
     runtime.start()
 
 

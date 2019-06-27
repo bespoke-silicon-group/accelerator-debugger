@@ -8,6 +8,7 @@
 
 import pdb
 
+import os.path
 from prompt_toolkit.styles import Style
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.widgets import TextArea, SearchToolbar, Label
@@ -16,9 +17,10 @@ from prompt_toolkit.application import Application
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout.menus import CompletionsMenu
 import prompt_toolkit.layout.containers as pt_containers
+import lib.elf_parser
 
 COMMANDS = ['step', 'info', 'list', 'help', 'breakpoint', 'lsbrk',
-            'delete', 'run', 'clear', 'rstep', 'go']
+            'delete', 'run', 'clear', 'rstep', 'go', 'source']
 
 
 class ModuleCompleter(Completer):
@@ -58,7 +60,8 @@ class InputException(Exception):
 
 class InputHandler():
     """ Handle input from the user, throwing errors as necessary """
-    def __init__(self, input_field, output, time_field, model, display):
+    def __init__(self, input_field, output, time_field, model, display,
+                 bin_file):
         self.input = input_field
         self.output = output
         self.time_field = time_field
@@ -70,6 +73,7 @@ class InputHandler():
         self.breakpoints = []
         self.next_bkpt_num = 0
         self.last_text = []
+        self.bin_file = bin_file
 
     def parse_step(self, text):
         """ Handle the 'step' command """
@@ -189,6 +193,16 @@ class InputHandler():
             out_text += f"* {module.name}\n"
         return out_text
 
+    def parse_source(self, text):
+        """ Handle the source command: display source around a given address"""
+        if self.bin_file is None:
+            raise InputException("Need to run with --binary to use source!")
+        if len(text) == 1:
+            raise InputException(f"Need to provide an address")
+        address = int(text[1], 0)
+        return lib.elf_parser.get_source_lines(self.bin_file, address)
+
+
     @staticmethod
     def help_text():
         """Get the help text -- handle the 'help' command """
@@ -242,6 +256,8 @@ class InputHandler():
                 out_text = self.parse_go(text)
             elif text[0] == 'clear':
                 out_text = ""
+            elif text[0] == 'source':
+                out_text = self.parse_source(text)
             elif text[0] == 'debugger':
                 pdb.set_trace()
             else:
@@ -257,10 +273,14 @@ class InputHandler():
 
 class Runtime():
     """ The front-end of the debugger -- initializes and launches the app"""
-    def __init__(self, display, model):
+    def __init__(self, display, model, bin_file):
         assert model is not None and display is not None
         self.model = model
         self.display = display
+        if bin_file is not None and not os.path.isfile(bin_file):
+            self.bin_file = None
+        else:
+            self.bin_file = bin_file
 
     def create_windows(self):
         """Create all the windows of the display (input, output, debugger,
@@ -286,7 +306,7 @@ class Runtime():
         command_output = Label(text="")
         self.display.update()
         handler = InputHandler(input_field, command_output, time_field,
-                               self.model, self.display)
+                               self.model, self.display, self.bin_file)
 
         # Create container with display window and input text area
         container = pt_containers.HSplit([
