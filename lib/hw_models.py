@@ -153,17 +153,16 @@ class DebugModule():
     def __str__(self):
         raise NotImplementedError
 
-    def step(self, curr_time, step_time):
-        """Step the module, given the current simulation time and the time
-        length of a step"""
+    def edge(self, curr_time, edge_time):
+        """Move the module forward one clock edge in time"""
         raise NotImplementedError
 
-    def update(self, curr_time, step_time, num_steps):
-        """Update this module to curr_time + step_time * num_steps"""
+    def update(self, curr_time, edge_time, num_edges):
+        """Update this module to curr_time + edge_time * num_edges"""
         raise NotImplementedError
 
-    def rupdate(self, curr_time, step_time, num_steps):
-        """Update this module to curr_time - step_time * num_steps"""
+    def rupdate(self, curr_time, edge_time, num_edges):
+        """Update this module to curr_time - edge_time * num_edges"""
         raise NotImplementedError
 
 
@@ -184,18 +183,18 @@ class BasicModule(DebugModule):
             signal_dict[short_name] = signal.value
         return AttrDict(signal_dict)
 
-    def step(self, curr_time, step_time):
-        new_time = curr_time + step_time
+    def edge(self, curr_time, edge_time):
+        new_time = curr_time + edge_time
         for signal in self.signals:
             signal.value = Value(self.data.get_value(signal, new_time))
 
-    def update(self, curr_time, step_time, num_steps):
-        new_time = curr_time + step_time * num_steps
+    def update(self, curr_time, edge_time, num_edges):
+        new_time = curr_time + edge_time * num_edges
         for signal in self.signals:
             signal.value = Value(self.data.get_value(signal, new_time))
 
-    def rupdate(self, curr_time, step_time, num_steps):
-        new_time = curr_time - (step_time * num_steps)
+    def rupdate(self, curr_time, edge_time, num_edges):
+        new_time = curr_time - (edge_time * num_edges)
         for signal in self.signals:
             signal.value = Value(self.data.get_value(signal, new_time))
 
@@ -320,15 +319,15 @@ class Memory(DebugModule):
         if self.is_enable():
             self.write()
 
-    def step(self, curr_time, step_time):
-        new_time = curr_time + step_time
+    def edge(self, curr_time, edge_time):
+        new_time = curr_time + edge_time
         for signal in self.signals:
             signal.value = Value(self.data.get_value(signal, new_time))
         if self.is_enable():
             self.write()
 
-    def update(self, curr_time, step_time, num_steps):
-        end_time = curr_time + num_steps * step_time
+    def update(self, curr_time, edge_time, num_edges):
+        end_time = curr_time + num_edges * edge_time
         while curr_time < end_time:
             next_change = self.data.get_next_change(self.enable, curr_time)
             if next_change is None:
@@ -358,8 +357,8 @@ class Memory(DebugModule):
             curr_time = change_time
         return Value('x')
 
-    def rupdate(self, curr_time, step_time, num_steps):
-        new_time = curr_time - (step_time * num_steps)
+    def rupdate(self, curr_time, edge_time, num_edges):
+        new_time = curr_time - (edge_time * num_edges)
         while new_time < curr_time:
             prev_change = self.data.get_prev_change(self.enable, curr_time)
             if prev_change is None:
@@ -398,24 +397,24 @@ class Core(DebugModule):
     def __str__(self):
         pass
 
-    def step(self, curr_time, step_time):
+    def edge(self, curr_time, edge_time):
         pass
 
-    def update(self, curr_time, step_time, num_steps):
+    def update(self, curr_time, edge_time, num_edges):
         pass
 
-    def rupdate(self, curr_time, step_time, num_steps):
+    def rupdate(self, curr_time, edge_time, num_edges):
         pass
 
 
 class DebugModel():
     """Hardware Models compose Hardware Module, which contain signals. This
     constitutes a simulation platform for debugging"""
-    def __init__(self, step_time):
+    def __init__(self, edge_time):
         self.data = None
         self.time = 0
         self.end_time = None
-        self._step_time = step_time
+        self._edge_time = edge_time
         self._modules = []
 
     @property
@@ -453,9 +452,9 @@ class DebugModel():
         return self._modules
 
     @property
-    def step_time(self):
-        """The step increment for this model"""
-        return self._step_time
+    def edge_time(self):
+        """The edge increment for this model"""
+        return self._edge_time
 
     def get_end_time(self):
         """The end time of simulation for this model"""
@@ -469,13 +468,13 @@ class DebugModel():
             return None
         return req_module[0]
 
-    def step(self):
-        """Step the model by step_time time forward"""
+    def edge(self):
+        """Move the model forward by one clock edge"""
         if self.sim_time >= self.end_time:
             return self.sim_time
-        self.sim_time += self.step_time
+        self.sim_time += self.edge_time
         for module in self.modules:
-            module.step(self.sim_time, self.step_time)
+            module.edge(self.sim_time, self.edge_time)
         return self.sim_time
 
     def set_data(self, data):
@@ -485,22 +484,24 @@ class DebugModel():
         for module in self.modules:
             module.set_data(data)
 
-    def update(self, num_steps):
-        """Update this model by running forward num_steps steps"""
-        end_time = num_steps * self.step_time + self.sim_time
+    def update(self, num_edges):
+        """Updated this model by moving forward a given number of clock
+        edges"""
+        end_time = num_edges * self.edge_time + self.sim_time
         end_time = min(self.get_end_time(), end_time)
-        num_steps = (end_time - self.sim_time) // self.step_time
+        num_edges = (end_time - self.sim_time) // self.edge_time
         for module in self.modules:
-            module.update(self.sim_time, self.step_time, num_steps)
+            module.update(self.sim_time, self.edge_time, num_edges)
         self.sim_time = end_time
         return self.sim_time
 
-    def rupdate(self, num_steps):
-        """Update this model by running backwards num_steps steps"""
-        end_time = self.sim_time - (num_steps * self.step_time)
+    def rupdate(self, num_edges):
+        """Updated this model by moving backward a given number of clock
+        edges"""
+        end_time = self.sim_time - (num_edges * self.edge_time)
         end_time = max(0, end_time)
-        num_steps = (self.sim_time - end_time) // self.step_time
+        num_edges = (self.sim_time - end_time) // self.edge_time
         for module in self.modules:
-            module.rupdate(self.sim_time, self.step_time, num_steps)
+            module.rupdate(self.sim_time, self.edge_time, num_edges)
         self.sim_time = end_time
         return self.sim_time

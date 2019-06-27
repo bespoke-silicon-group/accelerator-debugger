@@ -19,9 +19,15 @@ from prompt_toolkit.layout.menus import CompletionsMenu
 import prompt_toolkit.layout.containers as pt_containers
 import lib.elf_parser
 
-COMMANDS = ['step', 'info', 'list', 'help', 'breakpoint', 'lsbrk',
-            'delete', 'run', 'clear', 'rstep', 'go', 'source']
+COMMANDS = ['info', 'list', 'help', 'breakpoint', 'lsbrk', 'delete', 'run',
+            'clear', 'go', 'source', 'fedge', 'redge']
 
+# COMMANDS = ['fedge',  # Run for <n> clock edges forward
+#             'redge',  # Run for <n> clock edges backward
+#             'info',   # Get status for a DebugModule
+#             'break',  # Set a breakpoint for a <condition>
+#             'lsbrk',  # List active breakpoints
+#             'delete', # Delete breakpoint <n>
 
 class ModuleCompleter(Completer):
     """Text completion for user-input, including completion for module names"""
@@ -75,15 +81,15 @@ class InputHandler():
         self.last_text = []
         self.bin_file = bin_file
 
-    def parse_step(self, text):
-        """ Handle the 'step' command """
+    def parse_fedge(self, text):
+        """ Handle the 'fedge' command """
         if len(text) == 2:
-            num_steps = int(text[1])
+            num_edges = int(text[1])
         else:
-            num_steps = 1
+            num_edges = 1
         if self.breakpoints:
-            while num_steps > 0:
-                self.model.step()
+            while num_edges > 0:
+                self.model.edge()
                 sim_time = self.model.sim_time
                 for module in self.model.modules:
                     signals = module.signal_dict
@@ -95,22 +101,22 @@ class InputHandler():
                 if sim_time >= self.model.get_end_time():
                     self.display.update()
                     return f"Hit simulation end at time {self.model.sim_time}"
-                num_steps -= 1
+                num_edges -= 1
             self.display.update()
             return ""
-        self.model.update(num_steps)
+        self.model.update(num_edges)
         self.display.update()
         if self.model.sim_time >= self.model.get_end_time():
             return f"Hit end of simulation at time {self.model.sim_time}"
         return ""
 
-    def parse_rstep(self, text):
-        """ Handle the 'rstep' and 'rs' commands -- reverse step"""
+    def parse_redge(self, text):
+        """ Handle the 'redge' and 'r' commands -- reverse clock edge"""
         if len(text) == 2:
-            num_steps = int(text[1])
+            num_edges = int(text[1])
         else:
-            num_steps = 1
-        self.model.rupdate(num_steps)
+            num_edges = 1
+        self.model.rupdate(num_edges)
         self.display.update()
         return ""
 
@@ -169,8 +175,8 @@ class InputHandler():
             end_time = int(text[1])
             if end_time < curr_time:
                 raise InputException("Time must be later than current time")
-        steps = (end_time - curr_time) // self.model.step_time
-        return self.parse_step(f"step {steps}".split())
+        edges = (end_time - curr_time) // self.model.edge_time
+        return self.parse_edge(f"fedge {edges}".split())
 
     def parse_go(self, text):
         """ Handle the go command -- jump to a given time"""
@@ -178,11 +184,11 @@ class InputHandler():
             raise InputException(f"Need to provide a time with go!")
         dest_time = int(text[1])
         curr_time = self.model.sim_time
-        steps = abs(dest_time - curr_time) // self.model.step_time
+        edges = abs(dest_time - curr_time) // self.model.edge_time
         if dest_time < curr_time:
-            self.model.rupdate(steps)
+            self.model.rupdate(edges)
         else:
-            self.model.update(steps)
+            self.model.update(edges)
         self.display.update()
         return ""
 
@@ -240,10 +246,10 @@ class InputHandler():
                 out_text = self.help_text()
             elif text[0] == 'info':
                 out_text = self.parse_info(text)
-            elif text[0] == 'step' or text[0] == 's':
-                out_text = self.parse_step(text)
-            elif text[0] == 'rstep' or text[0] == 'rs':
-                out_text = self.parse_rstep(text)
+            elif text[0] == 'fedge' or text[0] == 'f':
+                out_text = self.parse_fedge(text)
+            elif text[0] == 'redge' or text[0] == 'r':
+                out_text = self.parse_redge(text)
             elif text[0] == 'breakpoint' or text[0] == 'b':
                 out_text = self.parse_breakpoint(text)
             elif text[0] == 'lsbrk':

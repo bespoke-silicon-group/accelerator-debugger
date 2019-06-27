@@ -95,6 +95,7 @@ function `gen_top_view` should return the top level `View`, `HSplit`, or
 [ ] Info on a code module gives asm instructions and source?
 
 ### Misc fixes
+[ ] Command processing should be done via regex
 [ ] Input handler should just have a pointer to Runtime, get fields from there
 [ ] If multiple signals in a module shorten to the same thing, give a longer
     name
