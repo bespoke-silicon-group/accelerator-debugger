@@ -9,6 +9,7 @@
 import pdb
 
 import os.path
+import re
 from prompt_toolkit.styles import Style
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.widgets import TextArea, SearchToolbar, Label
@@ -19,15 +20,56 @@ from prompt_toolkit.layout.menus import CompletionsMenu
 import prompt_toolkit.layout.containers as pt_containers
 import lib.elf_parser
 
-COMMANDS = ['info', 'list', 'help', 'breakpoint', 'lsbrk', 'delete', 'run',
-            'clear', 'go', 'source', 'fedge', 'redge']
+# We run lstrip and rstrip before matching against regex
+COMMANDS = [
+    ("fedge <n>", "Run simulation <n> clock edges forward (default=1)",
+     "^(f|fedge)\s*(\d*)$"),
 
-# COMMANDS = ['fedge',  # Run for <n> clock edges forward
-#             'redge',  # Run for <n> clock edges backward
-#             'info',   # Get status for a DebugModule
-#             'break',  # Set a breakpoint for a <condition>
-#             'lsbrk',  # List active breakpoints
-#             'delete', # Delete breakpoint <n>
+    ("redge <n>", "Run simulation <n> clock edges backward (default=1)",
+     "^(r|redge)\s*(\d*)$"),
+
+    ("step <n>", "Step <n> source code lines forward (default=1)",
+     "^(s|step)\s*(\d*)$"),
+
+    ("rstep <n>", "Step <n> source code lines backward (default=1)",
+     "^(rs|rstep)\s*(\d*)$"),
+
+    ("break <condition>", "Set a breakpoint for <condition> (python syntax)",
+     "^(b|break) (.*)$"),
+
+    ("lsbrk", "List all active breakpoints",
+     "^(l|lsbrk)$"),
+
+    ("delete <n>", "Delete breakpoint <n>",
+     "^(d|delete) (\d+)$"),
+
+    ("run <time>", "Run simulation until <time>",
+     "^(run)\s*(\d+)$"),
+
+    ("jump <time>", "Jump to a given time ignoring breakpoints",
+     "^(j|jump) (\d+)$"),
+
+    ("where <core>", "Give the source location for a given Core DebugModule",
+     "^(w|where)$"),
+
+    ("info <module>", "Give detailed information on a module",
+     "^(i|info) (\w+)$"),
+
+    ("clear", "Clear the output window",
+     "^(c|clear)$"),
+
+    ("quit", "Quit the debugger (also C-c, C-d)",
+     "^(q|quit)$"),
+
+    ("help", "Print this help text",
+     "^(h|help)$"),
+
+    ("modules", "Print a list of modules in the model",
+     "^(m|modules)$"),
+
+    ("debugger", "Launch the PDB debugger (for tool debugging)",
+     "^(debugger)$")
+]
 
 class ModuleCompleter(Completer):
     """Text completion for user-input, including completion for module names"""
@@ -42,7 +84,7 @@ class ModuleCompleter(Completer):
         text = document.text.strip()
         typed = document.text.strip().split()
         num_words = len(typed)
-        words = COMMANDS
+        words = [command[0].split()[0] for command in COMMANDS]
         if (num_words > 1 and typed[0] == 'info') or (text == 'info'):
             words = self.module_names
         elif num_words == 1 and (typed[0] in COMMANDS or text in COMMANDS):
@@ -81,23 +123,27 @@ class InputHandler():
         self.last_text = []
         self.bin_file = bin_file
 
-    def parse_fedge(self, text):
+    def _check_breakpoints(self):
+        for module in self.model.modules:
+            self.bkpt_namespace[module.name] = module.signal_dict
+        for num, _, cond in self.breakpoints:
+            if eval(cond, {}, self.bkpt_namespace):
+                self.display_update()
+                return num
+        return None
+
+    def fedge(self, num_edges):
         """ Handle the 'fedge' command """
-        if len(text) == 2:
-            num_edges = int(text[1])
-        else:
-            num_edges = 1
+        if not num_edges:
+            num_edges = '1'
+        num_edges = int(num_edges)
         if self.breakpoints:
             while num_edges > 0:
                 self.model.edge()
                 sim_time = self.model.sim_time
-                for module in self.model.modules:
-                    signals = module.signal_dict
-                    self.bkpt_namespace[module.name] = signals
-                for num, _, cond in self.breakpoints:
-                    if eval(cond, {}, self.bkpt_namespace):
-                        self.display.update()
-                        return f"Hit breakpoint {num} at time {sim_time}"
+                bkpt_num = self._check_breakpoints()
+                if bkpt_num is not None:
+                    return f"Hit breakpoint {bkpt_num} at time {sim_time}"
                 if sim_time >= self.model.get_end_time():
                     self.display.update()
                     return f"Hit simulation end at time {self.model.sim_time}"
@@ -110,31 +156,25 @@ class InputHandler():
             return f"Hit end of simulation at time {self.model.sim_time}"
         return ""
 
-    def parse_redge(self, text):
+    def redge(self, num_edges):
         """ Handle the 'redge' and 'r' commands -- reverse clock edge"""
-        if len(text) == 2:
-            num_edges = int(text[1])
-        else:
-            num_edges = 1
+        if not num_edges:
+            num_edges = '1'
+        num_edges = int(num_edges)
         self.model.rupdate(num_edges)
         self.display.update()
         return ""
 
-    def parse_info(self, text):
+    def module_info(self, module_name):
         """ Handle the 'info' command """
         modules = self.model.modules
-        if len(text) == 1:
-            raise InputException("info takes a module name")
-        req_module = [m for m in modules if m.name == text[1]]
+        req_module = [m for m in modules if m.name == module_name]
         if not req_module:
             raise InputException("Module not found!")
         return f"{str(req_module[0])}\n"
 
-    def parse_breakpoint(self, text):
+    def breakpoint(self, condition):
         """ Handle the 'breakpoint' command """
-        if len(text) <= 1:
-            raise InputException("Breakpoint takes a condition")
-        condition = " ".join(text[1:])
         try:
             current_cond = eval(condition, {}, self.bkpt_namespace)
         except Exception as e:  # Bare except, since this is literally a catch-all
@@ -148,41 +188,36 @@ class InputHandler():
         self.breakpoints.append((bkpt_num, condition, compiled_cond))
         return f"Breakpoint {bkpt_num}: {condition}"
 
-    def lsbrk(self, _):
+    def lsbrk(self):
         """ Handle the lsbrk command -- list breakpoints """
         out_text = ""
         for bkpt_num, condition, _ in self.breakpoints:
             out_text += f"Breakpoint {bkpt_num}: {condition}\n"
         return out_text[:-1]  # Strip final newline
 
-    def delete(self, text):
+    def delete(self, num):
         """ Handle the delete command -- delete breakpoint """
-        if len(text) <= 1:
-            raise InputException("Need to provide a breakpoint number!")
-        bkpt_num = int(text[1])
+        bkpt_num = int(num)
         for i, bkpt in enumerate(self.breakpoints):
             if bkpt[0] == bkpt_num:
                 self.breakpoints.pop(i)
                 return f"Removed breakpoint {bkpt_num}"
         raise InputException(f"Breakpoint {bkpt_num} not found!")
 
-    def run(self, text):
+    def run(self, end_time):
         """ Handle the run command -- forward execution to a given time """
         curr_time = self.model.sim_time
-        if len(text) == 1:  # Run until breakpoint or finish
-            end_time = self.model.end_time
-        else:
-            end_time = int(text[1])
-            if end_time < curr_time:
-                raise InputException("Time must be later than current time")
+        if not end_time:
+            end_time = str(self.model.end_time)
+        end_time = int(end_time)
+        if end_time < curr_time:
+            raise InputException("Time must be later than current time")
         edges = (end_time - curr_time) // self.model.edge_time
-        return self.parse_edge(f"fedge {edges}".split())
+        return self.fedge(edges)
 
-    def parse_go(self, text):
+    def jump(self, jump_time):
         """ Handle the go command -- jump to a given time"""
-        if len(text) == 1:
-            raise InputException(f"Need to provide a time with go!")
-        dest_time = int(text[1])
+        dest_time = int(jump_time)
         curr_time = self.model.sim_time
         edges = abs(dest_time - curr_time) // self.model.edge_time
         if dest_time < curr_time:
@@ -192,8 +227,8 @@ class InputHandler():
         self.display.update()
         return ""
 
-    def parse_list(self, _):
-        """ Handle the list command -- list all modules """
+    def list_modules(self):
+        """ Handle the modules command -- list all modules """
         out_text = ""
         for module in self.model.modules:
             out_text += f"* {module.name}\n"
@@ -212,17 +247,9 @@ class InputHandler():
     @staticmethod
     def help_text():
         """Get the help text -- handle the 'help' command """
-        htext = "HELP:\n    step <n>: Step the simulation n times\n"
-        htext += "    rstep <n>: Step the simulation backwards n times\n"
-        htext += "    info <module_name>: Print the status of a given module\n"
-        htext += "    breakpoint <cond>: Set a breakpoint given a condition\n"
-        htext += "       breakpoint conditions are written in Python syntax\n"
-        htext += "    lsbrk: List set breakpoints\n"
-        htext += "    delete <num>: Delete a breakpoint, specified by number\n"
-        htext += "    run <time>: Run simulation until a specified time\n"
-        htext += "    go <time>: Jump to a given time, ignoring breakpoints\n"
-        htext += "    clear: Clear the output window\n"
-        htext += "    help: Print this text"
+        htext = "HELP\n"
+        for command in COMMANDS:
+            htext += f"{command[0]}: {command[1]}\n"
         return htext
 
     def get_time_str(self):
@@ -232,7 +259,7 @@ class InputHandler():
     def accept(self, _):
         """ Handle user input """
         out_text = ""
-        text = self.input.text.strip().split()
+        text = self.input.text.lstrip().rstrip()
         if not text:
             # Empty text (user pressed enter on empty prompt)
             if self.last_text:
@@ -240,31 +267,47 @@ class InputHandler():
             else:
                 return
         try:
-            if text[0] == 'list':
-                out_text = self.parse_list(text)
-            elif text[0] == 'help':
+            match = None
+            for command in COMMANDS:
+                match = re.match(command[2], text, re.MULTILINE)
+                if match is not None:
+                    user_command = command[0].split()[0]
+                    break
+            if match is None:
+                raise InputException("Invalid Command!")
+
+            groups = match.groups()
+            if user_command == 'modules':
+                out_text = self.list_modules()
+            elif user_command == 'help':
                 out_text = self.help_text()
-            elif text[0] == 'info':
-                out_text = self.parse_info(text)
-            elif text[0] == 'fedge' or text[0] == 'f':
-                out_text = self.parse_fedge(text)
-            elif text[0] == 'redge' or text[0] == 'r':
-                out_text = self.parse_redge(text)
-            elif text[0] == 'breakpoint' or text[0] == 'b':
-                out_text = self.parse_breakpoint(text)
-            elif text[0] == 'lsbrk':
-                out_text = self.lsbrk(text)
-            elif text[0] == 'delete':
-                out_text = self.delete(text)
-            elif text[0] == 'run':
-                out_text = self.run(text)
-            elif text[0] == 'go':
-                out_text = self.parse_go(text)
-            elif text[0] == 'clear':
+            elif user_command == 'info':
+                out_text = self.module_info(groups[1])
+            elif user_command == 'fedge':
+                out_text = self.fedge(groups[1])
+            elif user_command == 'redge':
+                out_text = self.redge(groups[1])
+            elif user_command == 'break':
+                out_text = self.breakpoint(groups[1])
+            elif user_command == 'lsbrk':
+                out_text = self.lsbrk()
+            elif user_command == 'delete':
+                out_text = self.delete(groups[1])
+            elif user_command == 'run':
+                out_text = self.run(groups[1])
+            elif user_command == 'jump':
+                out_text = self.jump(groups[1])
+            elif user_command == 'where':
+                out_text = "Unimplemented 'where'"
+            elif user_command == 'step':
+                out_text = "Unimplemented 'step'"
+            elif user_command == 'rstep':
+                out_text = "Unimplemented 'rstep'"
+            elif user_command == 'clear':
                 out_text = ""
-            elif text[0] == 'source':
-                out_text = self.parse_source(text)
-            elif text[0] == 'debugger':
+            elif user_command == 'quit':
+                exit(0)
+            elif user_command == 'debugger':
                 pdb.set_trace()
             else:
                 raise InputException("Invalid Command!")
