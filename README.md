@@ -81,28 +81,26 @@ function `gen_top_view` should return the top level `View`, `HSplit`, or
 * delete: delete breakpoint
 
 ### ELF Stubs
-[ ] Way to specify "PC" module, basically, what we'd step
-[ ] Step line of source code in a given core
-[ ] List source location (give address, "PC" module, signal name)
-    * Alt -- just step based on a specific signal
-    * User can give module (module needs to be "PC" module) or signal name;
-      step takes current signal value and steps time until source line changes
-[ ] "next" command -- step until next line in same file
+- [ ] `where` should be able to take signal in core
+- [ ] `where` should be able to take raw address
+- [ ] `step` implemented with modules
+- [ ] `step` extended with signal in core
+- [ ] `where` should also print assembly instructions
+- [ ] "next" command -- step until next line in same file
     * Issue: need to be able to step out of functions?
       Could always track a list of functions that we enter -- this means checking
       the source line on every step
-[ ] List assembly instructions being executed by given core (in human readable fmt)
-[ ] Info on a code module gives asm instructions and source?
+- [ ] Info on a code module gives asm instructions and source?
 
 ### Misc fixes
-[ ] Command processing should be done via regex
-[ ] Input handler should just have a pointer to Runtime, get fields from there
-[ ] If multiple signals in a module shorten to the same thing, give a longer
+- [ ] Command processing should be done via regex
+- [ ] Input handler should just have a pointer to Runtime, get fields from there
+- [ ] If multiple signals in a module shorten to the same thing, give a longer
     name
 
 ### Stretch things to add
-[ ] Hook into ELF file stubs (there's a GNU library for this)
-[ ] list command to list lines of C source (and assembly)
-[ ] When instantiating module, SW dev can decide what signals to include
-   (by default, includes all)
-[ ] Parse AST to see what vars breakpoints depends on
+- [ ] Hook into ELF file stubs (there's a GNU library for this)
+- [ ] list command to list lines of C source (and assembly)
+- [ ] When instantiating module, SW dev can decide what signals to include
+     (by default, includes all)
+- [ ] Parse AST to see what vars breakpoints depends on

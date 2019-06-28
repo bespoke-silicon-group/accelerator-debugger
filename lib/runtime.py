@@ -19,6 +19,7 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout.menus import CompletionsMenu
 import prompt_toolkit.layout.containers as pt_containers
 import lib.elf_parser
+from lib.hw_models import Core
 
 # We run lstrip and rstrip before matching against regex
 COMMANDS = [
@@ -50,7 +51,7 @@ COMMANDS = [
      r"^(j|jump)\s*(\d+)$"),
 
     ("where <core>", "Give the source location for a given Core DebugModule",
-     r"^(w|where)$"),
+     r"^(w|where)\s+(\w+)$"),
 
     ("info <module>", "Give detailed information on a module",
      r"^(i|info)\s*(\w+)$"),
@@ -243,6 +244,21 @@ class InputHandler():
         address = int(text[1], 0)
         return lib.elf_parser.get_source_lines(self.bin_file, address)
 
+    def where(self, core_module):
+        """ Handle the `where` commmand: display source code that given core
+        module is executing"""
+        modules = self.model.modules
+        req_module = [m for m in modules if m.name == core_module]
+        if self.bin_file is None:
+            raise InputException("Need to run with --binary to use where!")
+        if not req_module:
+            raise InputException("Module not found!")
+        if not isinstance(req_module[0], Core):
+            raise InputException("where must be given a Core module")
+        address = req_module[0].pc.value.as_int
+        if address is None:
+            raise InputException("Core module has invalid address")
+        return lib.elf_parser.get_source_lines(self.bin_file, address)
 
     @staticmethod
     def help_text():
@@ -298,7 +314,7 @@ class InputHandler():
             elif user_command == 'jump':
                 out_text = self.jump(groups[1])
             elif user_command == 'where':
-                out_text = "Unimplemented 'where'"
+                out_text = self.where(groups[1])
             elif user_command == 'step':
                 out_text = "Unimplemented 'step'"
             elif user_command == 'rstep':

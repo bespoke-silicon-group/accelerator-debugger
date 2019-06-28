@@ -2,7 +2,7 @@
 
 """Model and View for a 2x2 celerity manycore"""
 
-from lib.hw_models import DebugModel, BasicModule, Memory
+from lib.hw_models import DebugModel, BasicModule, Memory, Core
 from lib.view import HSplit, VSplit, View, Display
 
 
@@ -26,10 +26,10 @@ class ManycoreModel(DebugModel):
         header = f"test_bsg_manycore.UUT.y[{core_y+1}].x[{core_x}].tile."
         header += "proc.h.z.vanilla_core."
         inst_sigs = []
+        pc_sig = header + "pc_n[21:0]"
         inst_sigs.append(header + "exe.pc_plus4[31:0]")
         inst_sigs.append(header + "id.pc_plus4[31:0]")
-        inst_sigs.append(header + "pc_n[21:0]")
-        self.add_module(BasicModule(f"inst_{core_y}_{core_x}", inst_sigs))
+        self.add_module(Core(f"inst_{core_y}_{core_x}", pc_sig, inst_sigs))
 
     def gen_wmem_module(self, core_x, core_y):
         """DebugModule for signals that write to the local memory"""

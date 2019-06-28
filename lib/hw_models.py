@@ -380,6 +380,8 @@ class Memory(DebugModule):
 
 
 class Core(DebugModule):
+    """Represents a hardware core -- basically a module that contains a program
+    counter"""
     def __init__(self, module_name, pc, other_signals=None):
         if other_signals is None:
             other_signals = []
@@ -392,19 +394,32 @@ class Core(DebugModule):
 
     @property
     def signal_dict(self):
-        pass
+        signal_dict = {}
+        for signal in self.signals:
+            short_name = signal.name.split('.')[-1]
+            signal_dict[short_name] = signal.value
+        return AttrDict(signal_dict)
 
     def __str__(self):
-        pass
+        desc = self.name + ": "
+        for signal in self.signals:
+            desc += f"\n    {str(signal)}"
+        return desc
 
     def edge(self, curr_time, edge_time):
-        pass
+        new_time = curr_time + edge_time
+        for signal in self.signals:
+            signal.value = Value(self.data.get_value(signal, new_time))
 
     def update(self, curr_time, edge_time, num_edges):
-        pass
+        new_time = curr_time + edge_time * num_edges
+        for signal in self.signals:
+            signal.value = Value(self.data.get_value(signal, new_time))
 
     def rupdate(self, curr_time, edge_time, num_edges):
-        pass
+        new_time = curr_time - (edge_time * num_edges)
+        for signal in self.signals:
+            signal.value = Value(self.data.get_value(signal, new_time))
 
 
 class DebugModel():
