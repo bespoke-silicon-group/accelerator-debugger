@@ -73,7 +73,7 @@ class Value():
                 else:
                     raise RuntimeError("Need to prefix value with 0b or 0x")
             else:  # Assumed to be an integer
-                str1, str2 = self.value, bin(other)[2:]
+                str1, str2 = self.value.lstrip('0'), bin(other)[2:]
         return all('x' in [c1, c2] or c1 == c2 for c1, c2 in zip(str1, str2))
 
     def __str__(self):
@@ -180,7 +180,7 @@ class BasicModule(DebugModule):
         signal_dict = {}
         for signal in self.signals:
             short_name = signal.name.split('.')[-1].split('[')[0]
-            signal_dict[short_name] = signal.value
+            signal_dict[short_name] = signal.value.as_int
         return AttrDict(signal_dict)
 
     def edge(self, curr_time, edge_time):

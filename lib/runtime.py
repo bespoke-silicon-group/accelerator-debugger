@@ -23,52 +23,52 @@ import lib.elf_parser
 # We run lstrip and rstrip before matching against regex
 COMMANDS = [
     ("fedge <n>", "Run simulation <n> clock edges forward (default=1)",
-     "^(f|fedge)\s*(\d*)$"),
+     r"^(f|fedge)\s*(\d*)$"),
 
     ("redge <n>", "Run simulation <n> clock edges backward (default=1)",
-     "^(r|redge)\s*(\d*)$"),
+     r"^(r|redge)\s*(\d*)$"),
 
     ("step <n>", "Step <n> source code lines forward (default=1)",
-     "^(s|step)\s*(\d*)$"),
+     r"^(s|step)\s*(\d*)$"),
 
     ("rstep <n>", "Step <n> source code lines backward (default=1)",
-     "^(rs|rstep)\s*(\d*)$"),
+     r"^(rs|rstep)\s*(\d*)$"),
 
     ("break <condition>", "Set a breakpoint for <condition> (python syntax)",
-     "^(b|break) (.*)$"),
+     r"^(b|break) (.*)$"),
 
     ("lsbrk", "List all active breakpoints",
-     "^(l|lsbrk)$"),
+     r"^(l|lsbrk)$"),
 
     ("delete <n>", "Delete breakpoint <n>",
-     "^(d|delete) (\d+)$"),
+     r"^(d|delete) (\d+)$"),
 
     ("run <time>", "Run simulation until <time>",
-     "^(run)\s*(\d+)$"),
+     r"^(run)\s*(\d*)$"),
 
     ("jump <time>", "Jump to a given time ignoring breakpoints",
-     "^(j|jump) (\d+)$"),
+     r"^(j|jump)\s*(\d+)$"),
 
     ("where <core>", "Give the source location for a given Core DebugModule",
-     "^(w|where)$"),
+     r"^(w|where)$"),
 
     ("info <module>", "Give detailed information on a module",
-     "^(i|info) (\w+)$"),
+     r"^(i|info)\s*(\w+)$"),
 
     ("clear", "Clear the output window",
-     "^(c|clear)$"),
+     r"^(c|clear)$"),
 
     ("quit", "Quit the debugger (also C-c, C-d)",
-     "^(q|quit)$"),
+     r"^(q|quit)$"),
 
     ("help", "Print this help text",
-     "^(h|help)$"),
+     r"^(h|help)$"),
 
     ("modules", "Print a list of modules in the model",
-     "^(m|modules)$"),
+     r"^(m|modules)$"),
 
     ("debugger", "Launch the PDB debugger (for tool debugging)",
-     "^(debugger)$")
+     r"^(debugger)$")
 ]
 
 class ModuleCompleter(Completer):
@@ -128,7 +128,7 @@ class InputHandler():
             self.bkpt_namespace[module.name] = module.signal_dict
         for num, _, cond in self.breakpoints:
             if eval(cond, {}, self.bkpt_namespace):
-                self.display_update()
+                self.display.update()
                 return num
         return None
 
