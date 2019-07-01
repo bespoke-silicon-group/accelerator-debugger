@@ -51,7 +51,7 @@ COMMANDS = [
      r"^(j|jump)\s*(\d+)$"),
 
     ("where <core>", "Give the source location for a given Core DebugModule",
-     r"^(w|where)\s+(\w+)$"),
+     r"^(w|where)\s+(.+)$"),
 
     ("info <module>", "Give detailed information on a module",
      r"^(i|info)\s*(\w+)$"),
@@ -244,18 +244,25 @@ class InputHandler():
         address = int(text[1], 0)
         return lib.elf_parser.get_source_lines(self.bin_file, address)
 
-    def where(self, core_module):
+    def where(self, location):
         """ Handle the `where` commmand: display source code that given core
         module is executing"""
         modules = self.model.modules
-        req_module = [m for m in modules if m.name == core_module]
+        address = None
         if self.bin_file is None:
             raise InputException("Need to run with --binary to use where!")
-        if not req_module:
-            raise InputException("Module not found!")
-        if not isinstance(req_module[0], Core):
-            raise InputException("where must be given a Core module")
-        address = req_module[0].pc.value.as_int
+        try:  # treat location as an address
+            address = int(location, 0)
+        except ValueError:
+            req_module = [m for m in modules if m.name == location]
+            if req_module:  # Treat location as a Core module
+                if not isinstance(req_module[0], Core):
+                    raise InputException("where must be given a Core module")
+                address = req_module[0].pc.value.as_int
+            else:  # Treat location as a signal
+                for module in self.model.modules:
+                    self.bkpt_namespace[module.name] = module.signal_dict
+                address = eval(location, {}, self.bkpt_namespace)
         if address is None:
             raise InputException("Core module has invalid address")
         return lib.elf_parser.get_source_lines(self.bin_file, address)

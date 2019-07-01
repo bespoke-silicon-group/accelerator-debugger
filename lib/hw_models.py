@@ -137,7 +137,11 @@ class DebugModule():
     @property
     def signal_dict(self):
         """Get a dictionary of signal_name: value"""
-        raise NotImplementedError
+        signal_dict = {}
+        for signal in self.signals:
+            short_name = signal.name.split('.')[-1].split('[')[0]
+            signal_dict[short_name] = signal.value.as_int
+        return signal_dict
 
     @property
     def name(self):
@@ -177,10 +181,7 @@ class BasicModule(DebugModule):
 
     @property
     def signal_dict(self):
-        signal_dict = {}
-        for signal in self.signals:
-            short_name = signal.name.split('.')[-1].split('[')[0]
-            signal_dict[short_name] = signal.value.as_int
+        signal_dict = super(BasicModule, self).signal_dict
         return AttrDict(signal_dict)
 
     def edge(self, curr_time, edge_time):
@@ -264,10 +265,7 @@ class Memory(DebugModule):
 
     @property
     def signal_dict(self):
-        signal_dict = {}
-        for signal in self.signals:
-            short_name = signal.name.split('.')[-1]
-            signal_dict[short_name] = signal.value
+        signal_dict = super(Memory, self).signal_dict
         signal_dict.update(self.memory)
         return AttrDict(signal_dict)
 
@@ -394,10 +392,7 @@ class Core(DebugModule):
 
     @property
     def signal_dict(self):
-        signal_dict = {}
-        for signal in self.signals:
-            short_name = signal.name.split('.')[-1]
-            signal_dict[short_name] = signal.value
+        signal_dict = super(Core, self).signal_dict
         return AttrDict(signal_dict)
 
     def __str__(self):

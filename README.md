@@ -81,8 +81,6 @@ function `gen_top_view` should return the top level `View`, `HSplit`, or
 * delete: delete breakpoint
 
 ### ELF Stubs
-- [ ] `where` should be able to take signal in core
-- [ ] `where` should be able to take raw address
 - [ ] `step` implemented with modules
 - [ ] `step` extended with signal in core
 - [ ] `where` should also print assembly instructions
@@ -104,3 +102,5 @@ function `gen_top_view` should return the top level `View`, `HSplit`, or
 - [ ] When instantiating module, SW dev can decide what signals to include
      (by default, includes all)
 - [ ] Parse AST to see what vars breakpoints depends on
+- [ ] After an x occurs, trace back to when there was the first x on any signal
+      that's being tracked (after reset)
