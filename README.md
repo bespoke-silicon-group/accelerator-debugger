@@ -81,7 +81,6 @@ function `gen_top_view` should return the top level `View`, `HSplit`, or
 * delete: delete breakpoint
 
 ### ELF Stubs
-- [ ] `step` implemented with modules
 - [ ] `step` extended with signal in core
 - [ ] `where` should also print assembly instructions
 - [ ] "next" command -- step until next line in same file

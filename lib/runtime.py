@@ -30,7 +30,7 @@ COMMANDS = [
      r"^(r|redge)\s*(\d*)$"),
 
     ("step <n>", "Step <n> source code lines forward (default=1)",
-     r"^(s|step)\s*(\d*)$"),
+     r"^(s|step)\s+(\w+)\s*(\d*)$"),
 
     ("rstep <n>", "Step <n> source code lines backward (default=1)",
      r"^(rs|rstep)\s*(\d*)$"),
@@ -50,8 +50,8 @@ COMMANDS = [
     ("jump <time>", "Jump to a given time ignoring breakpoints",
      r"^(j|jump)\s*(\d+)$"),
 
-    ("where <core>", "Give the source location for a given Core DebugModule",
-     r"^(w|where)\s+(.+)$"),
+    ("where <core> <n>", "Give the source location for a given Core DebugModule",
+     r"^(w|where)\s+([\w|\.]+)\s*(\d*)$"),
 
     ("info <module>", "Give detailed information on a module",
      r"^(i|info)\s*(\w+)$"),
@@ -235,20 +235,14 @@ class InputHandler():
             out_text += f"* {module.name}\n"
         return out_text
 
-    def parse_source(self, text):
-        """ Handle the source command: display source around a given address"""
-        if self.bin_file is None:
-            raise InputException("Need to run with --binary to use source!")
-        if len(text) == 1:
-            raise InputException(f"Need to provide an address")
-        address = int(text[1], 0)
-        return lib.elf_parser.get_source_lines(self.bin_file, address)
-
-    def where(self, location):
+    def where(self, location, num_lines):
         """ Handle the `where` commmand: display source code that given core
         module is executing"""
         modules = self.model.modules
         address = None
+        if not num_lines:
+            num_lines = 3
+        num_lines = int(num_lines)
         if self.bin_file is None:
             raise InputException("Need to run with --binary to use where!")
         try:  # treat location as an address
@@ -265,7 +259,32 @@ class InputHandler():
                 address = eval(location, {}, self.bkpt_namespace)
         if address is None:
             raise InputException("Core module has invalid address")
-        return lib.elf_parser.get_source_lines(self.bin_file, address)
+        source = lib.elf_parser.get_source_lines(self.bin_file, address,
+                                                 num_lines)
+        return source
+
+    def step(self, core_module, num_steps):
+        """ Handle the `step` command -- move execution forward until the
+        source line that corresponds to the core_module changes"""
+        if not num_steps:
+            num_steps = 1
+        modules = self.model.modules
+        req_module = [m for m in modules if m.name == core_module]
+        if req_module:  # Treat location as a Core module
+            if not isinstance(req_module[0], Core):
+                raise InputException("where must be given a Core module")
+            addr = req_module[0].pc.value.as_int
+            if addr is None:
+                raise InputException("Core module has invalid address")
+        file, line = lib.elf_parser.get_source_loc(self.bin_file, addr)
+        while num_steps > 0:
+            self.fedge(1)
+            nfile, nline = lib.elf_parser.get_source_loc(self.bin_file, addr)
+            if nfile != file or nline != line:
+                file, line = nfile, nline
+                num_steps -= 1
+            addr = req_module[0].pc.value.as_int
+        return ""
 
     @staticmethod
     def help_text():
@@ -321,9 +340,9 @@ class InputHandler():
             elif user_command == 'jump':
                 out_text = self.jump(groups[1])
             elif user_command == 'where':
-                out_text = self.where(groups[1])
+                out_text = self.where(groups[1], groups[2])
             elif user_command == 'step':
-                out_text = "Unimplemented 'step'"
+                out_text = self.step(groups[1], groups[2])
             elif user_command == 'rstep':
                 out_text = "Unimplemented 'rstep'"
             elif user_command == 'clear':

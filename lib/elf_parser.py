@@ -1,43 +1,66 @@
-import sys
+"""Utilities for parsing ELF DWARF info and getting lines of source code that
+correspond to addresses in the ELF binary"""
 
-from prompt_toolkit import HTML
+import sys
 from elftools.common.py3compat import bytes2str
 from elftools.dwarf.descriptions import describe_form_class
 from elftools.elf.elffile import ELFFile
+import lib.runtime
 
 
-def get_source_lines(filename, address):
-    """Try to get the source code line that's associated with a given address
-    in a given ELF file"""
+def _get_loc(filename, address):
+    """Helper for doing address->source code translation"""
     with open(filename, 'rb') as elffile:
         elffile = ELFFile(elffile)
 
         if not elffile.has_dwarf_info():
-            return '  file has no DWARF info'
+            raise lib.runtime.InputException('file has no DWARF info')
 
         # get_dwarf_info returns a DWARFInfo context object, which is the
         # starting point for all DWARF-based processing in pyelftools.
         dwarfinfo = elffile.get_dwarf_info()
 
-        funcname = decode_funcname(dwarfinfo, address)
+        func = decode_funcname(dwarfinfo, address)
         path, file, lineno = decode_file_line(dwarfinfo, address)
         if path is None:
-            return "Source lines for address not found!"
+            err = "Source lines for address not found!"
+            raise lib.runtime.InputException(err)
 
-        full_path = path + "/" + file
-        out_text = f"{hex(address)} in {funcname}(), {file}:{lineno}\n"
-        # arrow = "\x1b[7;30;46m" + "<----" + "\x1b[0m"
-        arrow = "<----"
-        with open(full_path) as bin_file:
-            for i, line in enumerate(bin_file):
-                if i in range(lineno - 2, lineno + 1):
-                    if i == lineno - 1:
-                        out_text += f"{line[:-1]} {arrow}\n"
-                    else:
-                        out_text += f"{line[:-1]}\n"
-                if i == lineno + 3:
-                    break
-        return out_text[:-1]  # Remove final newline
+        return path, file, lineno, func
+
+
+def get_source_loc(filename, address):
+    """ Get the path and source line that corresponds to the given address"""
+    path, file, lineno, _ = _get_loc(filename, address)
+    full_path = path + "/" + file
+    return full_path, lineno
+
+
+def _get_source_text(path, file, func, addr, lineno, num_lines):
+    """ Get multiple of lines of source around path/file:lineno"""
+    out_text = f"{hex(addr)} in {func}(), {file}:{lineno}\n"
+    # arrow = "\x1b[7;30;46m" + "<----" + "\x1b[0m"
+    arrow = "<----"
+    start_line = lineno - (num_lines // 2) - 1
+    end_line = lineno + (num_lines // 2)
+    full_path = path + "/" + file
+    with open(full_path) as bin_file:
+        for i, line in enumerate(bin_file):
+            if i in range(start_line, end_line):
+                if i == lineno - 1:
+                    out_text += f"{line[:-1]} {arrow}\n"
+                else:
+                    out_text += f"{line[:-1]}\n"
+            if i >= end_line:
+                break
+    return out_text
+
+
+def get_source_lines(filename, address, num_lines):
+    """Try to get the source code line that's associated with a given address
+    in a given ELF file"""
+    path, file, lineno, func = _get_loc(filename, address)
+    return _get_source_text(path, file, func, address, lineno, num_lines)
 
 
 def decode_funcname(dwarfinfo, address):
