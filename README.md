@@ -83,21 +83,14 @@ function `gen_top_view` should return the top level `View`, `HSplit`, or
 ### ELF Stubs
 - [ ] `step` extended with signal in core
 - [ ] `where` should also print assembly instructions
-- [ ] "next" command -- step until next line in same file
-    * Issue: need to be able to step out of functions?
-      Could always track a list of functions that we enter -- this means checking
-      the source line on every step
 - [ ] Info on a code module gives asm instructions and source?
 
 ### Misc fixes
-- [ ] Command processing should be done via regex
 - [ ] Input handler should just have a pointer to Runtime, get fields from there
 - [ ] If multiple signals in a module shorten to the same thing, give a longer
     name
 
 ### Stretch things to add
-- [ ] Hook into ELF file stubs (there's a GNU library for this)
-- [ ] list command to list lines of C source (and assembly)
 - [ ] When instantiating module, SW dev can decide what signals to include
      (by default, includes all)
 - [ ] Parse AST to see what vars breakpoints depends on

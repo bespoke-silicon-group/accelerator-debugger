@@ -109,13 +109,9 @@ class InputException(Exception):
 
 class InputHandler():
     """ Handle input from the user, throwing errors as necessary """
-    def __init__(self, input_field, output, time_field, model, display,
-                 bin_file):
-        self.input = input_field
-        self.output = output
-        self.time_field = time_field
+    def __init__(self, runtime, model, bin_file):
+        self.runtime = runtime
         self.model = model
-        self.display = display
         self.bkpt_namespace = {}
         for module in self.model.modules:
             self.bkpt_namespace[module.name] = module.signal_dict
@@ -129,7 +125,6 @@ class InputHandler():
             self.bkpt_namespace[module.name] = module.signal_dict
         for num, _, cond in self.breakpoints:
             if eval(cond, {}, self.bkpt_namespace):
-                self.display.update()
                 return num
         return None
 
@@ -146,13 +141,10 @@ class InputHandler():
                 if bkpt_num is not None:
                     return f"Hit breakpoint {bkpt_num} at time {sim_time}"
                 if sim_time >= self.model.get_end_time():
-                    self.display.update()
                     return f"Hit simulation end at time {self.model.sim_time}"
                 num_edges -= 1
-            self.display.update()
             return ""
         self.model.update(num_edges)
-        self.display.update()
         if self.model.sim_time >= self.model.get_end_time():
             return f"Hit end of simulation at time {self.model.sim_time}"
         return ""
@@ -163,7 +155,6 @@ class InputHandler():
             num_edges = '1'
         num_edges = int(num_edges)
         self.model.rupdate(num_edges)
-        self.display.update()
         return ""
 
     def module_info(self, module_name):
@@ -225,7 +216,6 @@ class InputHandler():
             self.model.rupdate(edges)
         else:
             self.model.update(edges)
-        self.display.update()
         return ""
 
     def list_modules(self):
@@ -290,18 +280,15 @@ class InputHandler():
     def help_text():
         """Get the help text -- handle the 'help' command """
         htext = "HELP\n"
+        max_command_width = max([len(command[0]) for command in COMMANDS]) + 4
         for command in COMMANDS:
-            htext += f"{command[0]}: {command[1]}\n"
+            htext += f"{command[0]:^{max_command_width}}: {command[1]}\n"
         return htext
-
-    def get_time_str(self):
-        """ Get current simulation time as a string """
-        return str(self.model.sim_time)
 
     def accept(self, _):
         """ Handle user input """
         out_text = ""
-        text = self.input.text.lstrip().rstrip()
+        text = self.runtime.input
         if not text:
             # Empty text (user pressed enter on empty prompt)
             if self.last_text:
@@ -355,25 +342,34 @@ class InputHandler():
                 raise InputException("Invalid Command!")
         except InputException as exception:
             out_text = f"ERROR: {str(exception)}"
-        self.last_text = text
-        time_str = self.get_time_str() + "/" + str(self.model.get_end_time())
-        self.time_field.text = "Time: " + time_str
 
-        self.output.text = out_text
+        self.last_text = text
+        self.runtime.update(out_text)
 
 
 class Runtime():
     """ The front-end of the debugger -- initializes and launches the app"""
     def __init__(self, display, model, bin_file):
         assert model is not None and display is not None
-        self.model = model
         self.display = display
         if bin_file is not None and not os.path.isfile(bin_file):
-            self.bin_file = None
-        else:
-            self.bin_file = bin_file
+            bin_file = None
+        self.model = model
+        body, input_field, time_field, output = self._create_windows()
+        self.body = body
+        self.input_field = input_field
+        self.time_field = time_field
+        self.output = output
+        handler = InputHandler(self, self.model, bin_file)
+        input_field.accept_handler = handler.accept
+        self.update("")
 
-    def create_windows(self):
+    @property
+    def input(self):
+        """Get the current line of user input"""
+        return self.input_field.text.lstrip().rstrip()
+
+    def _create_windows(self):
         """Create all the windows of the display (input, output, debugger,
         text completer)"""
         module_names = [m.name for m in self.model.modules]
@@ -387,23 +383,20 @@ class Runtime():
 
         # Field to show current time
         end_time = str(self.model.get_end_time())
-        time_str = str(self.model.sim_time) + "/" + end_time
-        time_field = TextArea(text="Time: " + time_str,
+        time_field = TextArea(text="",
                               style='class:rprompt',
                               height=1,
                               width=len(end_time)*2 + 7,
                               multiline=False)
 
-        command_output = Label(text="")
+        output = Label(text="")
         self.display.update()
-        handler = InputHandler(input_field, command_output, time_field,
-                               self.model, self.display, self.bin_file)
 
         # Create container with display window and input text area
         container = pt_containers.HSplit([
             self.display.get_top_view(),
             pt_containers.Window(height=1, char='-'),
-            command_output,
+            output,
             pt_containers.VSplit([input_field, time_field]),
             search_field
         ])
@@ -417,13 +410,18 @@ class Runtime():
                                     ycursor=True,
                                     content=completion_menu)])
 
-        input_field.accept_handler = handler.accept
-        return (body, input_field)
+        return body, input_field, time_field, output
+
+    def update(self, out_text):
+        """Update the runtime and display"""
+        curr_time = str(self.model.sim_time)
+        time_str = curr_time + "/" + str(self.model.get_end_time())
+        self.time_field.text = "Time: " + time_str
+        self.output.text = out_text
+        self.display.update()
 
     def start(self):
         """Start the debugger: initialize the display and run"""
-        body, input_field = self.create_windows()
-
         style = Style([
             ('arrow', '#00aa00'),
             ('rprompt', 'bg:#c000c0 #ffffff')
@@ -439,7 +437,7 @@ class Runtime():
             event.app.exit()
 
         application = Application(
-            layout=Layout(body, focused_element=input_field),
+            layout=Layout(self.body, focused_element=self.input_field),
             key_bindings=bindings,
             style=style,
             mouse_support=True,
