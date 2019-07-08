@@ -94,14 +94,19 @@ class Signal():
     """Signals are compsed of the VCD symbol that represents the signal,
     the name of the signal in the DebugModule that's it's part of, and
     its current value"""
-    def __init__(self, sig_name, vcd_data):
+    def __init__(self, sig_name, vcd_data, name_len):
         self._symbol = vcd_data.get_symbol(sig_name)
         self.name = sig_name
         self.value = Value(vcd_data.get_value(self, 0))
+        self.name_len = name_len
 
     def __str__(self):
-        short_name = self.name.split('.')[-1]
-        return f"{short_name}: {str(self.value)}"
+        return f"{self.sig_name}: {str(self.value)}"
+
+    @property
+    def sig_name(self):
+        name = "_".join(self.name.split('.')[-self.name_len:])
+        return name.split('[')[0]
 
     @property
     def symbol(self):
@@ -139,8 +144,8 @@ class DebugModule():
         """Get a dictionary of signal_name: value"""
         signal_dict = {}
         for signal in self.signals:
-            short_name = signal.name.split('.')[-1].split('[')[0]
-            signal_dict[short_name] = signal.value.as_int
+            sig_name = signal.sig_name
+            signal_dict[sig_name] = signal.value.as_int
         return signal_dict
 
     @property
@@ -150,9 +155,19 @@ class DebugModule():
 
     def set_data(self, data):
         """Set the VCD data that this module should use as a backend"""
+        name_len = 1
+        while True:
+            names = []
+            for name in self.signal_names:
+                short_name = "_".join(name.split('.')[-name_len:])
+                short_name = short_name.split("[")[0]
+                names.append(short_name)
+            if len(names) == len(set(names)):
+                break
+            name_len += 1
         self.data = data
         for sig_name in self.signal_names:
-            self._signals.append(Signal(sig_name, data))
+            self._signals.append(Signal(sig_name, data, name_len))
 
     def __str__(self):
         raise NotImplementedError
@@ -446,6 +461,14 @@ class DebugModel():
     def add_module(self, module):
         """Add a module to the Model"""
         self.modules.append(module)
+
+    @property
+    def signal_dict(self):
+        """The signal dict that describes the entire HWModel"""
+        signals = {}
+        for module in self.modules:
+            signals[module.name] = module.signal_dict
+        return signals
 
     @property
     def sim_time(self):

@@ -30,7 +30,7 @@ COMMANDS = [
      r"^(r|redge)\s*(\d*)$"),
 
     ("step <n>", "Step <n> source code lines forward (default=1)",
-     r"^(s|step)\s+(\w+)\s*(\d*)$"),
+     r"^(s|step)\s+([.\w]+)\s*(\d*)$"),
 
     ("rstep <n>", "Step <n> source code lines backward (default=1)",
      r"^(rs|rstep)\s*(\d*)$"),
@@ -253,19 +253,27 @@ class InputHandler():
                                                  num_lines)
         return source
 
-    def step(self, core_module, num_steps):
+    def step(self, location, num_steps):
         """ Handle the `step` command -- move execution forward until the
         source line that corresponds to the core_module changes"""
         if not num_steps:
             num_steps = 1
         modules = self.model.modules
-        req_module = [m for m in modules if m.name == core_module]
+        req_module = [m for m in modules if m.name == location]
+        is_module = False
         if req_module:  # Treat location as a Core module
             if not isinstance(req_module[0], Core):
                 raise InputException("where must be given a Core module")
             addr = req_module[0].pc.value.as_int
             if addr is None:
                 raise InputException("Core module has invalid address")
+            is_module = True
+        else:  # Treat Location as a signal
+            self.bkpt_namespace = self.model.signal_dict
+            try:
+                addr = eval(location, {}, self.bkpt_namespace)
+            except AttributeError:
+                raise InputException("Invalid Location for step!")
         file, line = lib.elf_parser.get_source_loc(self.bin_file, addr)
         while num_steps > 0:
             self.fedge(1)
@@ -273,7 +281,11 @@ class InputHandler():
             if nfile != file or nline != line:
                 file, line = nfile, nline
                 num_steps -= 1
-            addr = req_module[0].pc.value.as_int
+            if is_module:
+                addr = req_module[0].pc.value.as_int
+            else:
+                self.bkpt_namespace = self.model.signal_dict
+                addr = eval(location, {}, self.bkpt_namespace)
         return ""
 
     @staticmethod
