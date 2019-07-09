@@ -18,7 +18,9 @@ hardware's interworking and work closely with hardware developers.
 ## Setup
 This project has two dependencies, `prompt_toolkit` and `pyelftools`. Both can
 be installed with `pip`:
+
 `pip install prompt_toolkit`
+
 `pip install pyelftools`
 
 
@@ -114,4 +116,3 @@ evaluate to True.
 ### Stretch things to add
 - [ ] When instantiating module, SW dev can decide what signals to include
      (by default, includes all)
-- [ ] Parse AST to see what vars breakpoints depends on
