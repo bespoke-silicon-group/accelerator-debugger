@@ -16,18 +16,21 @@ hardware's interworking and work closely with hardware developers.
 
 
 ## Setup
+This project assumes a minimum Python version of 3.6.
+
 This project has two dependencies, `prompt_toolkit` and `pyelftools`. Both can
 be installed with `pip`:
 
-`pip install prompt_toolkit`
+`pip3 install prompt_toolkit`
 
-`pip install pyelftools`
+`pip3 install pyelftools`
 
 
 ## Getting Started
 For ease of compatibility, we only support VCD (value change dump) files,
 instead of Synopsys's proprietary VPD file format. To convert between VPD files
 and VCD files, Synopsys provides a tool with a standard VCS installation:
+
 `vpd2vcd <input_vpd_file> <output_vcd_file>`
 
 By default, `vpd2vcd` doesn't unpack structures, which can make debugging
@@ -38,6 +41,7 @@ Compared to VPD files, VCD files can be extremely large (on the order of 4GB
 for a VCD file that was generated from a 50MB VPD file). One way of reducing
 the size of the resulting VCD file is to only translate value changes within a
 certain time range. This can be accomplished with the following:
+
 `vpd2vcd +start+<start_time> +end+<end_time> <input_file> <output_file>`
 
 ## Creating a DebugModel

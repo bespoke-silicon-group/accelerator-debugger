@@ -29,10 +29,10 @@ COMMANDS = [
     ("redge <n>", "Run simulation <n> clock edges backward (default=1)",
      r"^(r|redge)\s*(\d*)$"),
 
-    ("step <n>", "Step <n> source code lines forward (default=1)",
+    ("step <Core_or_sig> <n>", "Step <n> source code lines forward (default=1)",
      r"^(s|step)\s+([.\w]+)\s*(\d*)$"),
 
-    ("rstep <n>", "Step <n> source code lines backward (default=1)",
+    ("rstep <Core_or_sig> <n>", "Step <n> source code lines backward (default=1)",
      r"^(rs|rstep)\s*(\d*)$"),
 
     ("break <condition>", "Set a breakpoint for <condition> (python syntax)",
