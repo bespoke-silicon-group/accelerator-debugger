@@ -68,6 +68,9 @@ COMMANDS = [
     ("modules", "Print a list of modules in the model",
      r"^(m|modules)$"),
 
+    ("traceback", "Run simulation backwards to the last point without any 'x'",
+     r"^(traceback)$"),
+
     ("debugger", "Launch the PDB debugger (for tool debugging)",
      r"^(debugger)$")
 ]
@@ -288,6 +291,25 @@ class InputHandler():
                 addr = eval(location, {}, self.bkpt_namespace)
         return ""
 
+    def _model_has_dont_cares(self):
+        for signal in self.model.signals:
+            if 'x' in signal.value.as_str:
+                return True
+        return False
+
+    def traceback(self):
+        """Run simulation backwards until the last point where no signals were
+        don't cares"""
+        curr_time = self.model.sim_time
+        if self._model_has_dont_cares():
+            raise InputException("Can't traceback if there isn't an 'x'!")
+        while curr_time > 0:
+            self.redge(1)
+            curr_time = self.model.sim_time
+            if self._model_has_dont_cares():
+                break
+        return f"Last 'x' found at {curr_time}"
+
     @staticmethod
     def help_text():
         """Get the help text -- handle the 'help' command """
@@ -348,6 +370,8 @@ class InputHandler():
                 out_text = ""
             elif user_command == 'quit':
                 exit(0)
+            elif user_command == 'traceback':
+                out_text = self.traceback()
             elif user_command == 'debugger':
                 pdb.set_trace()
             else:
