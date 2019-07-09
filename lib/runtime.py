@@ -301,14 +301,16 @@ class InputHandler():
         """Run simulation backwards until the last point where no signals were
         don't cares"""
         curr_time = self.model.sim_time
-        if self._model_has_dont_cares():
+        if not self._model_has_dont_cares():
             raise InputException("Can't traceback if there isn't an 'x'!")
         while curr_time > 0:
             self.redge(1)
             curr_time = self.model.sim_time
-            if self._model_has_dont_cares():
+            if not self._model_has_dont_cares():
+                self.fedge(1)
+                curr_time = self.model.sim_time
                 break
-        return f"Last 'x' found at {curr_time}"
+        return f"First 'x' found at {curr_time}"
 
     @staticmethod
     def help_text():

@@ -30,7 +30,7 @@ and VCD files, Synopsys provides a tool with a standard VCS installation:
 
 By default, `vpd2vcd` doesn't unpack structures, which can make debugging
 challenging in projects that make heavy use of packed structures. To generate
-the unpacked VCD file, use the `+splitpacked` flag when running `vpd2vcd`.
+the unpacked VCD file, use the `+splitpacked` option when running `vpd2vcd`.
 
 Compared to VPD files, VCD files can be extremely large (on the order of 4GB
 for a VCD file that was generated from a 50MB VPD file). One way of reducing
@@ -41,18 +41,24 @@ certain time range. This can be accomplished with the following:
 ## Creating a DebugModel
 To use the debugger, one needs to create a `DebugModel` based on the hardware
 used. See `test_model.py` for a simple version of a `DebugModel` and
-`manycore_model.py` for a more complex version. A `DebugModel` is a series of
-`DebugModule` that, in turn, are a collection of signals. To create a `DebugModel`,
+`manycore_model.py` for a more complex version. A `DebugModel` is a collection of
+`DebugModule`s that, in turn, are a collection of signals. To create a `DebugModel`,
 one needs to determine which signals in the VCD are useful for debugging, then
 wrap those signals into logical `DebugModule` units.
 
-Currently, there are two types of `DebugModule` units. A `BasicModule` is just a
-wrapper for signals and is instantiated by providing a name for the module and
-a list of signals names that the module composes. A `Memory` takes address,
-write data, and write enable signal names, as well as the assertion level of
-the write enable as a boolean. Additionally, one can select segments of the of
-the memory that are of interest by providing a list of segments when
-initializing the `Memory`.
+Currently, there are three types of `DebugModule` units.
+- A `BasicModule` is a simple wrapper for signals and is instantiated by
+  providing a name for the module and a list of signals names that the module
+  composes.
+- A `Memory` takes address, write data, and write enable signal names, as well
+  as the assertion level of the write enable as a boolean. Additionally, one can
+  select segments of the of the memory that are of interest by providing a list
+  of segments when initializing the `Memory`. `Memory` modules are used for
+  tracking signals inside memories -- register file SRAMs, Data Memory SRAMs,
+  and others.
+- A `Core` takes a signal name that denotes the program counter for the core,
+  and a list of signals that should also be tracked by the module. `Core`
+  modules are useful for tracking logical hardware cores.
 
 After modules are initialized, they can be added to the `DebugModel` via
 `self.add_module` in the `__init__` function of the `DebugModel`.
@@ -68,31 +74,44 @@ function `gen_top_view` should return the top level `View`, `HSplit`, or
 `VSplit`.
 
 ## Using the Debugger
-### Terminology
-* fedge: advance one clock edge
-* redge: reverse one clock edge
-* rstep: Go backwards one line in source
-* step: step forward one line in source
-* where <module>: Give source listing of where a core's execution is (+asm?) in
-    parallel
-* info: List signals in module; maybe with special casing for Memory/Core
-* break: Set breakpoint
-* lsbrk: list breakpoints
-* delete: delete breakpoint
+### The Basics
+* `fedge <n>`: advance <n> clock edges
+* `redge <n>`: reverse <n> clock edges
+* `run <time>`: Run simulation until a breakpoint is hit or <time> is reached
+* `break <condition>`: Set a breakpoint -- conditions are given in Python syntax
+  (see below)
+* `lsbrk`: List active breakpoints
+* `delete <num>`: Delete a breakpoint
+* `clear`: Clear the output window
+* `help`: Print help text
 
-### ELF Stubs
-- [ ] `step` extended with signal in core
-- [ ] `where` should also print assembly instructions
-- [ ] Info on a code module gives asm instructions and source?
+### Using Breakpoints
+Breakpoint conditions are given in Python syntax (i.e. `and` instead of `&&`,
+`not` instead of `!`). Users can describe signals via Python attributes. For
+instance, if one wanted to set a breakpoint for when signal `foo` inside
+`DebugModule` `bar` was non-zero, the following syntax would suffice:
 
-### Misc fixes
-- [ ] Input handler should just have a pointer to Runtime, get fields from there
-- [ ] If multiple signals in a module shorten to the same thing, give a longer
-    name
+`break bar.foo != 0`
+
+If one wanted to set a breakpoint for when register 8 in `DebugModule` `RF` was
+equal to `0xcafebebe`, one could use the following:
+
+`break RF[8] == 0xcafebebe`
+
+Note that the debugger treats don't cares by the SystemVerilog definition -- if
+a signal's current value is `x`, any equality check with the signal will
+evaluate to True.
+
+### More Advanced
+* `jump <time>`: Jump to a given simulation time, ignoring breakpoints
+* `step <core_or_sig> <n>`: Step forward <n> lines in source for the given Core
+  module or signal
+* `where <module>`: Give source listing of where a core's execution is
+* `traceback`: Given a point in simulation where some traced signal is 'x', find
+  the last point in simulation where no signals were 'x'. Since signals in
+  `Memory` modules are set to 'x' by default, they are ignored for `traceback`.
 
 ### Stretch things to add
 - [ ] When instantiating module, SW dev can decide what signals to include
      (by default, includes all)
 - [ ] Parse AST to see what vars breakpoints depends on
-- [ ] After an x occurs, trace back to when there was the first x on any signal
-      that's being tracked (after reset)
