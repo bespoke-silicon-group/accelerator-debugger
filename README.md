@@ -116,6 +116,9 @@ evaluate to True.
 * `traceback`: Given a point in simulation where some traced signal is 'x', find
   the last point in simulation where no signals were 'x'. Since signals in
   `Memory` modules are set to 'x' by default, they are ignored for `traceback`.
+  
+As a note, to use `step` or `where` the `--binary` flag needs to be used. For
+where to include assembly listings, `spike-dasm` needs to be on the $PATH.
 
 ### Stretch things to add
 - [ ] When instantiating module, SW dev can decide what signals to include

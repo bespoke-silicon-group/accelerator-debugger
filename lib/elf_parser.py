@@ -14,11 +14,14 @@ def _spike_dasm(instructions):
     dasm_arg = ""
     for inst in instructions:
         dasm_arg += f"DASM({inst})\n"
-    spike_dasm = subprocess.Popen(('echo', dasm_arg),
-                                  stdout=subprocess.PIPE)
-    asm = subprocess.check_output(('spike-dasm'),
-                                  stdin=spike_dasm.stdout)
-    spike_dasm.wait()
+    try:
+        spike_dasm = subprocess.Popen(('echo', dasm_arg),
+                                    stdout=subprocess.PIPE)
+        asm = subprocess.check_output(('spike-das'),
+                                    stdin=spike_dasm.stdout)
+        spike_dasm.wait()
+    except:  # Something went wrong running spike-dasm
+        return []
     return asm.strip().decode('ascii').split('\n')
 
 

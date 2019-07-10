@@ -256,9 +256,13 @@ class InputHandler():
                                                  num_lines)
         asm = lib.elf_parser.get_asm(self.bin_file, address, num_lines)
         out_text = source[0] + '\n\n'
-        asm[num_lines // 2] += "  <--"
-        for i, asm_line in enumerate(asm):
-            out_text += f"{asm_line:<25}     |   {source[i+1]:>}\n"
+        if asm:
+            asm[num_lines // 2] += "  <--"
+            for i, asm_line in enumerate(asm):
+                out_text += f"{asm_line:<25}     |   {source[i+1]:>}\n"
+        else:
+            for i in range(1, len(source)):
+                out_text += f"{source[i]:<}\n"
         return out_text
 
     def step(self, location, num_steps):
