@@ -234,7 +234,7 @@ class InputHandler():
         modules = self.model.modules
         address = None
         if not num_lines:
-            num_lines = 3
+            num_lines = 5
         num_lines = int(num_lines)
         if self.bin_file is None:
             raise InputException("Need to run with --binary to use where!")
@@ -254,7 +254,12 @@ class InputHandler():
             raise InputException("Core module has invalid address")
         source = lib.elf_parser.get_source_lines(self.bin_file, address,
                                                  num_lines)
-        return source
+        asm = lib.elf_parser.get_asm(self.bin_file, address, num_lines)
+        out_text = source[0] + '\n\n'
+        asm[num_lines // 2] += "  <--"
+        for i, asm_line in enumerate(asm):
+            out_text += f"{asm_line:<25}     |   {source[i+1]:>}\n"
+        return out_text
 
     def step(self, location, num_steps):
         """ Handle the `step` command -- move execution forward until the

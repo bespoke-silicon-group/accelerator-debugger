@@ -1,11 +1,59 @@
 """Utilities for parsing ELF DWARF info and getting lines of source code that
 correspond to addresses in the ELF binary"""
 
-import sys
+import subprocess
 from elftools.common.py3compat import bytes2str
 from elftools.dwarf.descriptions import describe_form_class
 from elftools.elf.elffile import ELFFile
+from elftools.elf.constants import SH_FLAGS
 import lib.runtime
+
+
+def _spike_dasm(instructions):
+    # Use spike-dasm to disassemble machine opcodes to instructions
+    dasm_arg = ""
+    for inst in instructions:
+        dasm_arg += f"DASM({inst})\n"
+    spike_dasm = subprocess.Popen(('echo', dasm_arg),
+                                  stdout=subprocess.PIPE)
+    asm = subprocess.check_output(('spike-dasm'),
+                                  stdin=spike_dasm.stdout)
+    spike_dasm.wait()
+    return asm.strip().decode('ascii').split('\n')
+
+
+def _get_instructions(elffile, elf_section, section_offset, num_lines):
+    # Parse the ELF section for machine opcodes at 'address'
+    arrow = "<--"
+    data = elf_section.data()
+    wsize = elffile.elfclass // 8  # Bytes per word
+    inst_data = [data[i:i+wsize] for i in range(0, len(data), wsize)]
+    if elffile.little_endian:
+        inst_data = [inst[::-1] for inst in inst_data]  # Reverse insts
+    for i, inst in enumerate(inst_data):
+        inst_data[i] = [f"{hex(inst[i])[2:].zfill(2)}" for i in range(wsize)]
+        inst_data[i] = "".join(inst_data[i])
+    inst_offset = section_offset // wsize
+    half_lines = num_lines // 2
+    return inst_data[inst_offset-half_lines:inst_offset+half_lines+1]
+
+
+def get_asm(filename, address, num_lines):
+    """Get the assembly instructions associated with an address"""
+    with open(filename, 'rb') as elffile:
+        elffile = ELFFile(elffile)
+        addr_section = None
+        for section in elffile.iter_sections():
+            section_start = section['sh_addr']
+            section_end = section_start + section['sh_size']
+            if section['sh_flags'] & SH_FLAGS.SHF_EXECINSTR:
+                if section_start < address < section_end:
+                    addr_section = section
+        section_offset = address - addr_section['sh_addr']
+
+        insts = _get_instructions(elffile, addr_section,
+                                  section_offset, num_lines)
+        return _spike_dasm(insts)
 
 
 def _get_loc(filename, address):
@@ -38,19 +86,19 @@ def get_source_loc(filename, address):
 
 def _get_source_text(path, file, func, addr, lineno, num_lines):
     """ Get multiple of lines of source around path/file:lineno"""
-    out_text = f"{hex(addr)} in {func}(), {file}:{lineno}\n"
+    out_text = [f"{hex(addr)} in {func}(), {file}:{lineno}"]
     # arrow = "\x1b[7;30;46m" + "<----" + "\x1b[0m"
-    arrow = "<----"
-    start_line = lineno - (num_lines // 2) - 1
-    end_line = lineno + (num_lines // 2)
+    arrow = "<--"
+    start_line = lineno - (num_lines // 2) - 2
+    end_line = lineno + (num_lines // 2) - 1
     full_path = path + "/" + file
     with open(full_path) as bin_file:
         for i, line in enumerate(bin_file):
             if i in range(start_line, end_line):
                 if i == lineno - 1:
-                    out_text += f"{line[:-1]} {arrow}\n"
+                    out_text.append(f"{line[:-1]} {arrow}")
                 else:
-                    out_text += f"{line[:-1]}\n"
+                    out_text.append(f"{line[:-1]}")
             if i >= end_line:
                 break
     return out_text
@@ -124,9 +172,5 @@ def decode_file_line(dwarfinfo, address):
             prevstate = entry.state
     return None, None, None
 
-
-if __name__ == '__main__':
-    if len(sys.argv) < 3:
-        print('Expected usage: {0} <address> <executable>'.format(sys.argv[0]))
-        sys.exit(1)
-    process_file(sys.argv[2], int(sys.argv[1], 0))
+if __name__ == "__main__":
+    print(get_asm('data/fft_good', 0xfd0, 5))
