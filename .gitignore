@@ -1,4 +1,3 @@
-data/vcd.vcd
-data/splitpacked.vcd
+*.vcd
 *.cached
 cadenv*
