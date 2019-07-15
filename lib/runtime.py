@@ -33,7 +33,7 @@ COMMANDS = [
      r"^(s|step)\s+([.\w]+)\s*(\d*)$"),
 
     ("rstep <Core_or_sig> <n>", "Step <n> source code lines backward (default=1)",
-     r"^(rs|rstep)\s*(\d*)$"),
+     r"^(rs|rstep)\s+([.\w]+)\s*(\d*)$"),
 
     ("break <condition>", "Set a breakpoint for <condition> (python syntax)",
      r"^(b|break) (.*)$"),
@@ -265,8 +265,8 @@ class InputHandler():
                 out_text += f"{source[i]:<}\n"
         return out_text
 
-    def step(self, location, num_steps):
-        """ Handle the `step` command -- move execution forward until the
+    def step(self, forward, location, num_steps):
+        """ Handle the `step` and `rstep` commands -- move execution until the
         source line that corresponds to the core_module changes"""
         if not num_steps:
             num_steps = 1
@@ -288,7 +288,10 @@ class InputHandler():
                 raise InputException("Invalid Location for step!")
         file, line = lib.elf_parser.get_source_loc(self.bin_file, addr)
         while num_steps > 0:
-            self.fedge(1)
+            if forward:
+                self.fedge(1)
+            else:
+                self.redge(1)
             nfile, nline = lib.elf_parser.get_source_loc(self.bin_file, addr)
             if nfile != file or nline != line:
                 file, line = nfile, nline
@@ -374,9 +377,9 @@ class InputHandler():
             elif user_command == 'where':
                 out_text = self.where(groups[1], groups[2])
             elif user_command == 'step':
-                out_text = self.step(groups[1], groups[2])
+                out_text = self.step(True, groups[1], groups[2])
             elif user_command == 'rstep':
-                out_text = "Unimplemented 'rstep'"
+                out_text = self.step(False, groups[1], groups[2])
             elif user_command == 'clear':
                 out_text = ""
             elif user_command == 'quit':
@@ -478,7 +481,6 @@ class Runtime():
 
         @bindings.add('c-c')
         @bindings.add('c-q')
-        @bindings.add('c-d')
         def _(event):
             " Pressing Ctrl-Q or Ctrl-C will exit the user interface. "
             event.app.exit()
