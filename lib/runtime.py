@@ -420,27 +420,6 @@ class Runtime():
         """Get the current line of user input"""
         return self.input_field.text.lstrip().rstrip()
 
-    def _init_application(self):
-        style = Style([
-            ('arrow', '#00aa00'),
-            ('rprompt', 'bg:#c000c0 #ffffff')
-        ])
-
-        bindings = KeyBindings()
-
-        @bindings.add('c-c')
-        @bindings.add('c-q')
-        def _(event):
-            " Pressing Ctrl-Q or Ctrl-C will exit the user interface. "
-            event.app.exit()
-
-        return Application(
-            layout=Layout(self.body, focused_element=self.input_field),
-            key_bindings=bindings,
-            style=style,
-            mouse_support=True,
-            full_screen=True)
-
     def _create_windows(self):
         """Create all the windows of the display (input, output, debugger,
         text completer)"""
@@ -483,6 +462,27 @@ class Runtime():
                                     content=completion_menu)])
 
         return body, input_field, time_field, output
+
+    def _init_application(self):
+        style = Style([
+            ('arrow', '#00aa00'),
+            ('rprompt', 'bg:#c000c0 #ffffff')
+        ])
+
+        bindings = KeyBindings()
+
+        @bindings.add('c-c')
+        @bindings.add('c-q')
+        def _(event):
+            " Pressing Ctrl-Q or Ctrl-C will exit the user interface. "
+            event.app.exit()
+
+        return Application(
+            layout=Layout(self.body, focused_element=self.input_field),
+            key_bindings=bindings,
+            style=style,
+            mouse_support=True,
+            full_screen=True)
 
     def update(self, out_text):
         """Update the runtime and display"""
