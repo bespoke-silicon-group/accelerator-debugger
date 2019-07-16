@@ -383,7 +383,7 @@ class InputHandler():
             elif user_command == 'clear':
                 out_text = ""
             elif user_command == 'quit':
-                exit(0)
+                self.runtime.application.exit()
             elif user_command == 'traceback':
                 out_text = self.traceback()
             elif user_command == 'debugger':
@@ -413,11 +413,33 @@ class Runtime():
         handler = InputHandler(self, self.model, bin_file)
         input_field.accept_handler = handler.accept
         self.update("")
+        self.application = self._init_application()
 
     @property
     def input(self):
         """Get the current line of user input"""
         return self.input_field.text.lstrip().rstrip()
+
+    def _init_application(self):
+        style = Style([
+            ('arrow', '#00aa00'),
+            ('rprompt', 'bg:#c000c0 #ffffff')
+        ])
+
+        bindings = KeyBindings()
+
+        @bindings.add('c-c')
+        @bindings.add('c-q')
+        def _(event):
+            " Pressing Ctrl-Q or Ctrl-C will exit the user interface. "
+            event.app.exit()
+
+        return Application(
+            layout=Layout(self.body, focused_element=self.input_field),
+            key_bindings=bindings,
+            style=style,
+            mouse_support=True,
+            full_screen=True)
 
     def _create_windows(self):
         """Create all the windows of the display (input, output, debugger,
@@ -472,23 +494,4 @@ class Runtime():
 
     def start(self):
         """Start the debugger: initialize the display and run"""
-        style = Style([
-            ('arrow', '#00aa00'),
-            ('rprompt', 'bg:#c000c0 #ffffff')
-        ])
-
-        bindings = KeyBindings()
-
-        @bindings.add('c-c')
-        @bindings.add('c-q')
-        def _(event):
-            " Pressing Ctrl-Q or Ctrl-C will exit the user interface. "
-            event.app.exit()
-
-        application = Application(
-            layout=Layout(self.body, focused_element=self.input_field),
-            key_bindings=bindings,
-            style=style,
-            mouse_support=True,
-            full_screen=True)
-        application.run()
+        self.application.run()
