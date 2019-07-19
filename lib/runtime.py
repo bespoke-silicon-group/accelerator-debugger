@@ -146,8 +146,10 @@ class InputHandler():
                 if sim_time >= self.model.get_end_time():
                     return f"Hit simulation end at time {self.model.sim_time}"
                 num_edges -= 1
+                self.runtime.update_time()
             return ""
         self.model.update(num_edges)
+        self.runtime.update_time()
         if self.model.sim_time >= self.model.get_end_time():
             return f"Hit end of simulation at time {self.model.sim_time}"
         return ""
@@ -158,6 +160,7 @@ class InputHandler():
             num_edges = '1'
         num_edges = int(num_edges)
         self.model.rupdate(num_edges)
+        self.runtime.update_time()
         return ""
 
     def module_info(self, module_name):
@@ -456,7 +459,7 @@ class Runtime():
         completion_menu = CompletionsMenu(max_height=5, scroll_offset=1)
         body = pt_containers.FloatContainer(
             content=container,
-            floats=[
+           floats=[
                 pt_containers.Float(xcursor=True,
                                     ycursor=True,
                                     content=completion_menu)])
@@ -483,6 +486,19 @@ class Runtime():
             style=style,
             mouse_support=True,
             full_screen=True)
+
+    def update_time(self):
+        """Update the user's view of simulation time -- minimal progress
+        redraw"""
+        sim_time = self.model.sim_time
+        if sim_time % (self.model.edge_time * 100) != 0:
+            return
+        curr_time = str(sim_time)
+        time_str = curr_time + "/" + str(self.model.get_end_time())
+        self.time_field.text = "Time: " + time_str
+        # TODO This is bad, but there isn't a another nice way to do it without
+        # doing a whole lot of reworking with async
+        self.application._redraw()
 
     def update(self, out_text):
         """Update the runtime and display"""

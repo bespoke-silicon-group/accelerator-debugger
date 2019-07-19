@@ -243,6 +243,11 @@ class VCDData():
                 elif "$var" in line:
                     self._parse_var(line, hier, usigs, all_sigs)
 
+        # If any signals were never toggled, set them to 'x' at t=0
+        for code in self.vcd:
+            if 'tv' not in self.vcd[code]:
+                self.vcd[code]['tv'] = [(0, 'x')]
+
     def _calc_mult(self, statement, opt_timescale=''):
         """
         Calculate a new multiplier for time values.
