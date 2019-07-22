@@ -17,7 +17,7 @@ def _spike_dasm(instructions):
     try:
         spike_dasm = subprocess.Popen(('echo', dasm_arg),
                                     stdout=subprocess.PIPE)
-        asm = subprocess.check_output(('spike-das'),
+        asm = subprocess.check_output(('spike-dasm'),
                                     stdin=spike_dasm.stdout)
         spike_dasm.wait()
     except:  # Something went wrong running spike-dasm
@@ -74,7 +74,8 @@ def _get_loc(filename, address):
         func = decode_funcname(dwarfinfo, address)
         path, file, lineno = decode_file_line(dwarfinfo, address)
         if path is None:
-            err = "Source lines for address not found!"
+            err = "Source lines for address not found"
+            err += ", did you compile your binary with -g?"
             raise lib.runtime.InputException(err)
 
         return path, file, lineno, func
