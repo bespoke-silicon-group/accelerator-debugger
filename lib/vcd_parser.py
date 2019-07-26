@@ -54,7 +54,8 @@ class VCDData():
             signal = self.vcd[k]
             nets = signal['nets']
             for net in nets:
-                self.mapping[net['hier']+'.'+net['name']] = k
+                net_name = net['name']
+                self.mapping[net['hier']+'.'+net_name] = k
 
     def get_value(self, sig, time):
         """Gets the value of sig at the given time"""
@@ -130,7 +131,7 @@ class VCDData():
         #   $var wire 4 ) addr [3:0] $end
         line_split = line.split()
         (sig_type, size, code) = line_split[1:4]
-        name = "".join(line_split[4:-1])
+        name = "".join(line_split[4:-1]).split('[')[0]
         path = '.'.join(hier)
         full_name = path + '.' + name
         if (full_name in usigs) or all_sigs:
