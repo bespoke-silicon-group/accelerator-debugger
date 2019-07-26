@@ -119,7 +119,3 @@ evaluate to True.
   
 As a note, to use `step` or `where` the `--binary` flag needs to be used. For
 where to include assembly listings, `spike-dasm` needs to be on the $PATH.
-
-### Stretch things to add
-- [ ] When instantiating module, SW dev can decide what signals to include
-     (by default, includes all)

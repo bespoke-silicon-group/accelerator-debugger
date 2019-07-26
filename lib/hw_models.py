@@ -290,11 +290,20 @@ class Memory(DebugModule):
         columns"""
         table = ''
         col_height = len(seq) // columns
+        max_val_len = 0
+        max_key_len = 0
+        for index in seq.keys():
+            val_len = len(str(seq[index]))
+            if val_len > max_val_len:
+                max_val_len = val_len
+            key_len = len(str(index))
+            if key_len > max_key_len:
+                max_key_len = key_len
         for row in range(col_height):
             for col in range(columns):
                 addr = (row * columns) + col
                 val = seq[row + (col_height * col)]
-                table += f" ({addr})={str(val)}".ljust(8)
+                table += f" ({addr:{max_key_len}})={str(val):{max_val_len}}"
             table += '\n'
         return table
 
