@@ -344,10 +344,10 @@ class Memory(DebugModule):
         while curr_time < end_time:
             next_change = self.data.get_next_change(self.enable, curr_time)
             if next_change is None:
-                return
-            curr_time = next_change.time
+                break
             self.enable.value = Value(next_change.val)
-            if self.is_enable():
+            curr_time = next_change.time
+            if next_change.time <= end_time and self.is_enable():
                 # Update addr and data
                 self.addr.value = Value(self.data.get_value(self.addr,
                                                             curr_time))
@@ -355,6 +355,9 @@ class Memory(DebugModule):
                                                              curr_time))
                 # Perform write
                 self.write()
+            curr_time = next_change.time
+        for signal in self.signals:
+            signal.value = Value(self.data.get_value(signal, end_time))
 
     def _get_last_write_value(self, curr_time, write_addr):
         """Get the last data written to write_addr strictly before curr_time"""
@@ -363,11 +366,14 @@ class Memory(DebugModule):
             prev_change = self.data.get_prev_change(self.enable, curr_time)
             if prev_change is None:
                 return None
-            change_time = prev_change[0]
+            change_time = prev_change.time
+            curr_time = change_time
+            # Ignore changes that didn't assert enable
+            if bool(Value(prev_change.val).as_int) != self.enable_level:
+                continue
             change_addr = Value(self.data.get_value(self.addr, change_time))
             if change_addr.as_int == write_addr:
                 return Value(self.data.get_value(self.wdata, change_time))
-            curr_time = change_time
         return Value('x')
 
     def rupdate(self, curr_time, edge_time, num_edges):
@@ -378,17 +384,18 @@ class Memory(DebugModule):
                 return
             curr_time = prev_change.time
             self.enable.value = Value(prev_change.val)
+            # If the last enable change asserted it, we need to rewind the write
             if new_time <= curr_time and self.is_enable():
-                # Search back to find the last value written to current addr
-                for sig in self.signals[:2]:
-                    sig.value = Value(self.data.get_value(sig, curr_time))
+                self.addr.value = Value(self.data.get_value(self.addr,
+                                                            curr_time))
                 int_addr = self.addr.value.as_int
                 # Search backwards to find the last write to given addr
                 self.wdata.value = self._get_last_write_value(curr_time,
                                                               int_addr)
                 self.write()
+                self.wdata.value = self.data.get_value(self.wdata, curr_time)
             else:
-                for sig in self.signals[:2]:
+                for sig in [self.wdata, self.addr]:
                     sig.value = Value(self.data.get_value(sig, new_time))
 
 
