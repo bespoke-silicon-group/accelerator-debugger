@@ -5,17 +5,14 @@ else
     PYTHON := python3
 endif
 
-DATA := data/splitpacked.vcd
-BINARY := data/fft_good
+DATA := data/fft_fail.vcd
+BINARY := data/fft_fail
 
 all:
 	$(PYTHON) debugger.py $(DATA) manycore --binary $(BINARY)
 regen:
-	$(PYTHON) debugger.py --regen $(DATA) manycore
+	$(PYTHON) debugger.py --regen $(DATA) manycore --binary $(BINARY)
 test:
 	$(PYTHON) debugger.py data/ex.vcd test
 siglist:
 	$(PYTHON) debugger.py $(DATA) manycore --dump-siglist data/splitpacked.siglist
-
-elftest:
-	$(PYTHON) elftest.py 0x00000fd0 $(BINARY)

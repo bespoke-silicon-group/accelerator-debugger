@@ -1,3 +1,4 @@
 *.vcd
 *.cached
 cadenv*
+*__pycache__*

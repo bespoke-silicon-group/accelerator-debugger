@@ -11,32 +11,31 @@ class ManycoreModel(DebugModel):
     def gen_rf_module(self, core_x, core_y):
         """ Generate module for the given x,y core for the register file"""
         header = f"test_bsg_manycore.UUT.y[{core_y+1}].x[{core_x}].tile."
-        header += "proc.h.z.vanilla_core."
+        header += "proc.h.z.hobbit0."
 
-        addr = header + "rf_wa[4:0]"
-        wdata = header + "rf_wd[31:0]"
+        addr = header + "rf_wa"
+        wdata = header + "rf_wd"
         wen = header + "rf_wen"
         self.add_module(Memory(f"rf_{core_y}_{core_x}", addr, wdata, wen,
                                True, size=32,
-                               segments=['a', 'b', '17', '18'],
-                               show_signals=False))
+                               show_signals=True))
 
     def gen_inst_module(self, core_x, core_y):
         """DebugModule for signals that describe the current instruction"""
         header = f"test_bsg_manycore.UUT.y[{core_y+1}].x[{core_x}].tile."
-        header += "proc.h.z.vanilla_core."
+        header += "proc.h.z.hobbit0."
         inst_sigs = []
-        pc_sig = header + "pc_n[21:0]"
-        inst_sigs.append(header + "exe.pc_plus4[31:0]")
-        inst_sigs.append(header + "id.pc_plus4[31:0]")
+        pc_sig = header + "pc_real"
+        inst_sigs.append(header + "exe.pc_plus4")
+        inst_sigs.append(header + "id.pc_plus4")
         self.add_module(Core(f"inst_{core_y}_{core_x}", pc_sig, inst_sigs))
 
     def gen_wmem_module(self, core_x, core_y):
         """DebugModule for signals that write to the local memory"""
         header = f"test_bsg_manycore.UUT.y[{core_y+1}].x[{core_x}].tile."
-        header += "proc.h.z.vanilla_core."
-        addr = header + 'to_mem_o.addr[31:0]'
-        wdata = header + 'to_mem_o.payload.write_data[31:0]'
+        header += "proc.h.z.hobbit0."
+        addr = header + 'to_mem_o.addr'
+        wdata = header + 'to_mem_o.payload.write_data'
         isload = header + 'mem.decode.is_load_op'
         isstr = header + 'mem.decode.is_store_op'
         stall = header + 'stall'
@@ -48,10 +47,10 @@ class ManycoreModel(DebugModel):
         header = f"test_bsg_manycore.UUT.y[{core_y+1}].x[{core_x}].tile."
         header += "proc.h.z."
         lout = header + 'launching_out'
-        addr = header + 'data_o_debug.addr[28:0]'
-        data = header + 'data_o_debug.payload.data[31:0]'
-        x_cord = header + 'data_o_debug.y_cord[1:0]'
-        y_cord = header + 'data_o_debug.x_cord[0:0]'
+        addr = header + 'data_o_debug.addr'
+        data = header + 'data_o_debug.payload.data'
+        x_cord = header + 'data_o_debug.y_cord'
+        y_cord = header + 'data_o_debug.x_cord'
         remote_sigs = [lout, addr, data, x_cord, y_cord]
         self.add_module(BasicModule(f"remote_{core_y}_{core_x}", remote_sigs))
 
