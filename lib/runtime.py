@@ -476,6 +476,7 @@ class Runtime():
 
         @bindings.add('c-c')
         @bindings.add('c-q')
+        @bindings.add('c-d')
         def _(event):
             " Pressing Ctrl-Q or Ctrl-C will exit the user interface. "
             event.app.exit()
