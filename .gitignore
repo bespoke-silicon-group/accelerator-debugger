@@ -1,3 +1,7 @@
+*.pyc
+*.elf
+*.vpd
+*.siglist
 *.vcd
 *.cached
 cadenv*

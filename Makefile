@@ -1,18 +1,21 @@
 PYPY := 1
-ifdef PYPY
+ifeq ($(PYPY), 1)
     PYTHON := pypy
 else
     PYTHON := python3
 endif
 
+$(info Using Python: ${PYTHON})
+
 DATA := data/fft_fail.vcd
 BINARY := data/fft_fail
+MODEL := manycore
 
 all:
-	$(PYTHON) debugger.py $(DATA) manycore --binary $(BINARY)
+	$(PYTHON) debugger.py $(DATA) $(MODEL) --binary $(BINARY)
 regen:
-	$(PYTHON) debugger.py --regen $(DATA) manycore --binary $(BINARY)
+	$(PYTHON) debugger.py --regen $(DATA) $(MODEL) --binary $(BINARY)
 test:
 	$(PYTHON) debugger.py data/ex.vcd test
 siglist:
-	$(PYTHON) debugger.py $(DATA) manycore --dump-siglist data/splitpacked.siglist
+	$(PYTHON) debugger.py $(DATA) $(MODEL) --dump-siglist data/splitpacked.siglist
