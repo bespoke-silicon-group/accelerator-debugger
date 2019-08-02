@@ -6,8 +6,9 @@
 import argparse
 from lib.vcd_parser import VCDData
 from lib.runtime import Runtime
-from test_model import TestModel, TestView
-from manycore_model import ManycoreModel, ManycoreView
+from models.test_model import TestModel, TestView
+from models.manycore_model import ManycoreModel, ManycoreView
+from models.blackparrot_model import BlackParrotModel, BlackParrotView
 
 
 def main():
@@ -34,6 +35,9 @@ def main():
     elif args.MODEL.lower() == 'manycore':
         model = ManycoreModel()
         display = ManycoreView(model)
+    elif args.MODEL.lower() == 'blackparrot':
+        model = BlackParrotModel()
+        display = BlackParrotView(model)
 
     vcd = VCDData(args.INPUT, siglist=model.signal_names,
                   cached=True, regen=args.regen,
