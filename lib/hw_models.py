@@ -271,7 +271,9 @@ class Memory(DebugModule):
     def addr_in_range(self, addr):
         """Check if an integer address is in one of the ranges given by the
         user"""
-        if not self.segments:
+        if self.segments is None or not self.segments:
+            if self.size:
+                return addr < self.size
             return True
         for segment in self.segments:
             if segment.start <= addr <= segment.end:
@@ -289,9 +291,10 @@ class Memory(DebugModule):
         """Print a table of memory values as a table with a fixed number of
         columns"""
         table = ''
-        col_height = len(seq) // columns
+        col_height = -(-len(seq) // columns)  # Ceiling division
         max_val_len = 0
         max_key_len = 0
+        # Determine the max length of a memory location, so we can align
         for index in seq.keys():
             val_len = len(str(seq[index]))
             if val_len > max_val_len:
@@ -302,7 +305,10 @@ class Memory(DebugModule):
         for row in range(col_height):
             for col in range(columns):
                 addr = (row * columns) + col
-                val = seq[row + (col_height * col)]
+                idx = row + (col_height * col)
+                if idx >= len(seq):
+                    continue
+                val = seq[idx]
                 table += f" ({addr:{max_key_len}})={str(val):{max_val_len}}"
             table += '\n'
         return table

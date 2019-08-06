@@ -5,6 +5,9 @@
 from lib.hw_models import DebugModel, BasicModule, Memory, Core
 from lib.view import HSplit, VSplit, View, Display
 
+X_DIM = 2
+Y_DIM = 2
+CLOCK_PERIOD = 20
 
 class ManycoreModel(DebugModel):
     """DebugModel that describes a 2x2 celerity manycore"""
@@ -88,9 +91,9 @@ class ManycoreModel(DebugModel):
         # DebugModel's __init__ method takes a clock period, in our case,
         # the clock toggles edges every 10ps, so a full clock period would be
         # 20ps.
-        super(ManycoreModel, self).__init__(20)
-        for i in range(2):  # X dimension
-            for j in range(2):  # Y Dimensiohn
+        super(ManycoreModel, self).__init__(CLOCK_PERIOD)
+        for i in range(X_DIM):
+            for j in range(Y_DIM):
                 self.gen_remote_module(j, i)
                 self.gen_wmem_module(j, i)
                 self.gen_rf_module(j, i)
@@ -107,8 +110,8 @@ class ManycoreView(Display):
 
         # This represents a fairly standard paradigm for creating Displays.
         # We start by creating a "View" of each module that we want to display.
-        for i in range(2):
-            for j in range(2):
+        for i in range(X_DIM):
+            for j in range(Y_DIM):
                 regs.append(View(model.get_module(f"rf_{i}_{j}")))
                 insts.append(View(model.get_module(f"inst_{i}_{j}")))
                 wmem.append(View(model.get_module(f"wmem_{i}_{j}")))
@@ -117,14 +120,10 @@ class ManycoreView(Display):
         # Then, we arrange the views with HSplits and VSplits.
         regs = HSplit(
             VSplit(
-                HSplit(VSplit(regs[0], remote[0]),
-                       VSplit(insts[0], wmem[0])),
-                HSplit(VSplit(regs[1], remote[1]),
-                       VSplit(insts[1], wmem[1]))),
+                HSplit(VSplit(regs[0], remote[0]), VSplit(insts[0], wmem[0])),
+                HSplit(VSplit(regs[1], remote[1]), VSplit(insts[1], wmem[1]))),
             VSplit(
-                HSplit(VSplit(regs[2], remote[2]),
-                       VSplit(insts[2], wmem[2])),
-                HSplit(VSplit(regs[3], remote[3]),
-                       VSplit(insts[3], wmem[3])))
+                HSplit(VSplit(regs[2], remote[2]), VSplit(insts[2], wmem[2])),
+                HSplit(VSplit(regs[3], remote[3]), VSplit(insts[3], wmem[3])))
         )
         return regs
