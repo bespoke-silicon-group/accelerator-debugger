@@ -85,6 +85,9 @@ class ManycoreModel(DebugModel):
         self.add_module(BasicModule(f"remote_{core_y}_{core_x}", remote_sigs))
 
     def __init__(self):
+        # DebugModel's __init__ method takes a clock period, in our case,
+        # the clock toggles edges every 10ps, so a full clock period would be
+        # 20ps.
         super(ManycoreModel, self).__init__(20)
         for i in range(2):  # X dimension
             for j in range(2):  # Y Dimensiohn

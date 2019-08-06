@@ -1,19 +1,31 @@
-# Agile Unhardware
+# Agile Debugger
 
 This tool looks to build a unified debugging interface between custom
 bleeding-edge hardware and application level software. While traditional
 debugging approaches (GDB, etc) may be appropriate for mature hardware
-platforms, debugging software running on custom hardware often involves
-a need for quick and efficient triage to determine if the bug lies in
-hardware or software so it can be assigned to the right people. Specifically,
-the traditional application ABI and ISA-level program state is usually not
-enough to determine what exactly is going wrong from a software level, on the
-other side, VCS's waveform viewer often has too much information, creating
-a heavyweight experience for software developers.
+platforms, debugging software running on custom hardware often requires a quick
+and efficient triage to determine if the bug lies in hardware or software so it
+can be properly assigned. More generally, the traditional application ABI and
+ISA-level program state is usually not enough to determine what exactly is going
+wrong from a software level, on the other side, VCS's waveform viewer often has
+too much information, creating a heavyweight experience for software developers.
 
+This tool looks to solve this SW-HW co-design issue by providing a framework to
+quickly create multi-paneled debugging interfaces that provide the right level
+of detail for application-level developers. With the debugger, developers can
+traverse forwards or backwards in time, set breakpoints, and traceback to the
+first "don't care" in a system, all while working on an agile hardware platform.
+The system decouples into a back-end `DebugModel` and a front end `View` so that
+the debugger layout can be tailored to meet the fault at hand.
+
+## Prerequisite Knowledge
 We assume that software developers have a general knowledge of the custom
 hardware's interworking and work closely with hardware developers.
+Additionally, a working knowledge of hardware design and Python 3 is
+recommended.
 
+Users looking to improve the debugger should also understand the VCD file
+format, the `prompt_toolkit` plugin, and the ELF file format.
 
 ## Setup
 This project assumes a minimum Python version of 3.6.
@@ -47,10 +59,10 @@ certain time range. This can be accomplished with the following:
 ## Creating a DebugModel
 To use the debugger, one needs to create a `DebugModel` based on the hardware
 used. See `test_model.py` for a simple version of a `DebugModel` and
-`manycore_model.py` for a more complex version. A `DebugModel` is a collection of
-`DebugModule`s that, in turn, are a collection of signals. To create a `DebugModel`,
-one needs to determine which signals in the VCD are useful for debugging, then
-wrap those signals into logical `DebugModule` units.
+`manycore_model.py` for a more complex version. A `DebugModel` is a collection
+of `DebugModule`s that, in turn, are a collection of hardware signals. To create
+a `DebugModel`, one needs to determine which signals in the VCD are useful for
+debugging, then wrap those signals into logical `DebugModule` units.
 
 Currently, there are three types of `DebugModule` units.
 - A `BasicModule` is a simple wrapper for signals and is instantiated by
@@ -64,10 +76,14 @@ Currently, there are three types of `DebugModule` units.
   and others.
 - A `Core` takes a signal name that denotes the program counter for the core,
   and a list of signals that should also be tracked by the module. `Core`
-  modules are useful for tracking logical hardware cores.
+  modules are useful for tracking logical hardware cores and querying source
+  code listings with the `where` command.
 
 After modules are initialized, they can be added to the `DebugModel` via
-`self.add_module` in the `__init__` function of the `DebugModel`.
+`self.add_module` in the `__init__` function of the `DebugModel` subclass. The
+subclass `__init__` function should call the `__init__` function of the
+`DebugModel` class and provide the clock period as an argument (see
+`manycore_model.py`).
 
 ## Creating a Display
 Creating a display is simple! One only needs to override the `gen_top_view`
@@ -112,10 +128,18 @@ evaluate to True.
 * `jump <time>`: Jump to a given simulation time, ignoring breakpoints
 * `step <core_or_sig> <n>`: Step forward <n> lines in source for the given Core
   module or signal
+* `rstep <core_or_sig> <n>`: Step backwards <n> lines in source code for the
+  given Core module or signal
 * `where <module>`: Give source listing of where a core's execution is
 * `traceback`: Given a point in simulation where some traced signal is 'x', find
   the last point in simulation where no signals were 'x'. Since signals in
   `Memory` modules are set to 'x' by default, they are ignored for `traceback`.
   
 As a note, to use `step` or `where` the `--binary` flag needs to be used. For
-where to include assembly listings, `spike-dasm` needs to be on the $PATH.
+`where` to include assembly listings, `spike-dasm` needs to be on the $PATH.
+
+When using `where`, the debugger uses debug information in the binary to
+correlate a PC value to a line number in a specific source file. This tool
+cannot detect if a source file has changed since the binary was compiled. Thus,
+it is possible for source code lines to not reflect the state of source code
+when the binary was compiled.
