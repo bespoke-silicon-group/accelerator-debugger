@@ -105,8 +105,8 @@ class Signal():
 
     @property
     def sig_name(self):
-        name = "_".join(self.name.split('.')[-self.name_len:])
-        return name.split('[')[0]
+        """Get the name of the signal as it'll be represented in Views"""
+        return "_".join(self.name.split('.')[-self.name_len:])
 
     @property
     def symbol(self):
@@ -156,12 +156,14 @@ class DebugModule():
     def set_data(self, data):
         """Set the VCD data that this module should use as a backend"""
         name_len = 1
+        # Ensure that we have a unique set of names by incrementally trying
+        # to include more of the heirarchy in the name
         while True:
+            # Infinite loop caused here
             names = []
             for name in self.signal_names:
-                short_name = "_".join(name.split('.')[-name_len:])
-                short_name = short_name.split("[")[0]
-                names.append(short_name)
+                names.append("_".join(name.split('.')[-name_len:]))
+            # Check for uniqueness
             if len(names) == len(set(names)):
                 break
             name_len += 1
