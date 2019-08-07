@@ -16,9 +16,9 @@ def _spike_dasm(instructions):
         dasm_arg += f"DASM({inst})\n"
     try:
         spike_dasm = subprocess.Popen(('echo', dasm_arg),
-                                    stdout=subprocess.PIPE)
+                                      stdout=subprocess.PIPE)
         asm = subprocess.check_output(('spike-dasm'),
-                                    stdin=spike_dasm.stdout)
+                                      stdin=spike_dasm.stdout)
         spike_dasm.wait()
     except:  # Something went wrong running spike-dasm
         return []
@@ -27,7 +27,6 @@ def _spike_dasm(instructions):
 
 def _get_instructions(elffile, elf_section, section_offset, num_lines):
     # Parse the ELF section for machine opcodes at 'address'
-    arrow = "<--"
     data = elf_section.data()
     wsize = elffile.elfclass // 8  # Bytes per word
     inst_data = [data[i:i+wsize] for i in range(0, len(data), wsize)]

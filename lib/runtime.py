@@ -459,10 +459,12 @@ class Runtime():
         completion_menu = CompletionsMenu(max_height=5, scroll_offset=1)
         body = pt_containers.FloatContainer(
             content=container,
-           floats=[
-                pt_containers.Float(xcursor=True,
-                                    ycursor=True,
-                                    content=completion_menu)])
+            floats=[
+                pt_containers.Float(
+                    xcursor=True, ycursor=True, content=completion_menu
+                )
+            ]
+        )
 
         return body, input_field, time_field, output
 
@@ -497,7 +499,7 @@ class Runtime():
         curr_time = str(sim_time)
         time_str = curr_time + "/" + str(self.model.get_end_time())
         self.time_field.text = "Time: " + time_str
-        # TODO This is bad, but there isn't a another nice way to do it without
+        # This is bad, but there isn't a another nice way to do it without
         # doing a whole lot of reworking with async
         self.application._redraw()
 
