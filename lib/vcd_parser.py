@@ -7,6 +7,7 @@ With some adaptations added after the fact.
 import re
 import os.path
 import json
+import lzma
 from collections import namedtuple
 
 
@@ -169,11 +170,14 @@ class VCDData():
             return True
         return False
 
-    def _parse_timescale(self, line, handle, opt_timescale):
+    def _parse_timescale(self, line, handle, opt_timescale, compressed):
         statement = line
         if "$end" not in line:
             while handle:
-                line = handle.readline()
+                if compressed:
+                    line = handle.readline().decode('ascii')
+                else:
+                    line = handle.readline()
                 statement += line
                 if "$end" in line:
                     break
@@ -202,47 +206,56 @@ class VCDData():
         mult = 0
         hier = []
         time = 0
+        compressed = False
 
-        with open(file, 'r') as file_handle:
-            while True:
+        if file.endswith('.xz'):
+            compressed = True
+            file_handle = lzma.open(file)
+        else:
+            file_handle = open(file, 'r')
+
+        while True:
+            if compressed:
+                line = file_handle.readline().decode('ascii')
+            else:
                 line = file_handle.readline()
-                if line == '':  # EOF
+            if line == '':  # EOF
+                break
+
+            line = line.strip()
+
+            # if nothing left after we strip whitespace, go to next line
+            if line == '':
+                continue
+
+            # put most frequent lines encountered at start of case,
+            # so other clauses usually don't need to be tested
+            if self._parse_change(line, time):
+                continue
+
+            elif line[0] == '#':
+                time = mult * int(line[1:])
+                self.endtime = time
+
+            elif "$enddefinitions" in line:
+                self._parse_enddefs(all_sigs)
+                if only_sigs:
                     break
 
-                line = line.strip()
+            elif "$timescale" in line:
+                mult = self._parse_timescale(line, file_handle, opt_timescale,
+                                             compressed)
 
-                # if nothing left after we strip whitespace, go to next line
-                if line == '':
-                    continue
+            elif "$scope" in line:
+                # assumes all on one line
+                #   $scope module dff end
+                hier.append(line.split()[2])  # just keep scope name
 
-                # put most frequent lines encountered at start of case,
-                # so other clauses usually don't need to be tested
-                if self._parse_change(line, time):
-                    continue
+            elif "$upscope" in line:
+                hier.pop()
 
-                elif line[0] == '#':
-                    time = mult * int(line[1:])
-                    self.endtime = time
-
-                elif "$enddefinitions" in line:
-                    self._parse_enddefs(all_sigs)
-                    if only_sigs:
-                        break
-
-                elif "$timescale" in line:
-                    mult = self._parse_timescale(line, file_handle,
-                                                 opt_timescale)
-
-                elif "$scope" in line:
-                    # assumes all on one line
-                    #   $scope module dff end
-                    hier.append(line.split()[2])  # just keep scope name
-
-                elif "$upscope" in line:
-                    hier.pop()
-
-                elif "$var" in line:
-                    self._parse_var(line, hier, usigs, all_sigs)
+            elif "$var" in line:
+                self._parse_var(line, hier, usigs, all_sigs)
 
         # If any signals were never toggled, set them to 'x' at t=0
         for code in self.vcd:

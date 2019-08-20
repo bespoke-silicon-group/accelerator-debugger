@@ -159,7 +159,6 @@ class DebugModule():
         # Ensure that we have a unique set of names by incrementally trying
         # to include more of the heirarchy in the name
         while True:
-            # Infinite loop caused here
             names = []
             for name in self.signal_names:
                 names.append("_".join(name.split('.')[-name_len:]))

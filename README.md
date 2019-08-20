@@ -39,7 +39,7 @@ be installed with `pip`:
 
 
 ## Getting Started
-For ease of compatibility, we only support VCD (value change dump) files,
+For ease of compatibility, we support VCD (value change dump) files,
 instead of Synopsys's proprietary VPD file format. To convert between VPD files
 and VCD files, Synopsys provides a tool with a standard VCS installation:
 
@@ -55,6 +55,10 @@ the size of the resulting VCD file is to only translate value changes within a
 certain time range. This can be accomplished with the following:
 
 `vpd2vcd +start+<start_time> +end+<end_time> <input_file> <output_file>`
+
+We also support loading XZ compressed files, which are on the order of 10x
+smaller than VCD dumps. The `xz` tool can be used to generate an xz file from a
+VCD file, which can then be passed to the debugger as the input.
 
 ## Creating a DebugModel
 To use the debugger, one needs to create a `DebugModel` based on the hardware
