@@ -26,17 +26,20 @@ def main():
     parser.add_argument('--binary', action='store',
                         dest='bin_file', default=None,
                         help="ELF file used in simulation")
+    parser.add_argument('--model-arg', action='append',
+                        dest='model_args', default=[],
+                        help="Arguments to pass to the model")
 
     args = parser.parse_args()
 
     if args.MODEL.lower() == 'test':
-        model = TestModel()
+        model = TestModel(args.model_args)
         display = TestView(model)
     elif args.MODEL.lower() == 'manycore':
-        model = ManycoreModel()
+        model = ManycoreModel(args.model_args)
         display = ManycoreView(model)
     elif args.MODEL.lower() == 'blackparrot':
-        model = BlackParrotModel()
+        model = BlackParrotModel(args.model_args)
         display = BlackParrotView(model)
 
     vcd = VCDData(args.INPUT, siglist=model.signal_names,

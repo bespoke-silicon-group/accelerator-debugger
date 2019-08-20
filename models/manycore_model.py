@@ -49,7 +49,7 @@ class ManycoreModel(DebugModel):
         header = f"test_bsg_manycore.UUT.y[{core_y+1}].x[{core_x}].tile."
         header += "proc.h.z.hobbit0."
         inst_sigs = []
-        pc_sig = header + "pc_real"
+        pc_sig = header + "pc_n"
         inst_sigs.append(header + "exe.pc_plus4")
         inst_sigs.append(header + "id.pc_plus4")
         # The second argument to a Core module (after the name) is the name of
@@ -87,7 +87,7 @@ class ManycoreModel(DebugModel):
         remote_sigs = [lout, addr, data, x_cord, y_cord]
         self.add_module(BasicModule(f"remote_{core_y}_{core_x}", remote_sigs))
 
-    def __init__(self):
+    def __init__(self, model_args):
         # DebugModel's __init__ method takes a clock period, in our case,
         # the clock toggles edges every 10ps, so a full clock period would be
         # 20ps.

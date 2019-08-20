@@ -7,7 +7,7 @@ from lib.view import HSplit, View, Display
 
 class TestModel(DebugModel):
     """ Debug model for data/ex.vpd; simple memory and signal values """
-    def __init__(self):
+    def __init__(self, model_args):
         super(TestModel, self).__init__(100)
         signals = ['logic.data', 'logic.data_valid']
         self.add_module(BasicModule("r0_data", signals))

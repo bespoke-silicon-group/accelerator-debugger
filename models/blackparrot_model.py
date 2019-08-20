@@ -39,7 +39,7 @@ class BlackParrotModel(DebugModel):
       self.add_module(Core(f"inst_{core_id}", pc_sig, inst_sigs))
 
 
-    def __init__(self):
+    def __init__(self, model_args):
         super(BlackParrotModel, self).__init__(20)
         self.gen_rf_module(0)
         self.gen_inst_module(0)
